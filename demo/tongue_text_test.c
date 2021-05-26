@@ -30,7 +30,7 @@ const double BALL_ELASTICITY = .5;
 
 const rgb_color_t WHITE_COLOR = (rgb_color_t) {1, 1, 1};
 
-const double TONGUE_SPEED = 2000;
+const double TONGUE_SPEED = 1500;
 const double TONGUE_WIDTH = 10;
 const rgb_color_t TONGUE_COLOR = (rgb_color_t) {0.388, 0.09, 0.663};
 
@@ -53,7 +53,7 @@ const double FRICTION_COEFFICIENT = 30;
 
 const double GRAVITY = 3000;
 
-const double TONGUE_FORCE = 300;
+const double TONGUE_FORCE = 3000;
 
 // SARAH'S CONSTANT DON'T TOUCH
 // const double FRICTION_COEFFICIENT = 10;
@@ -360,7 +360,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
 
                 char *c = malloc(1);
                 *c = 'T';
-                body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, WHITE_COLOR, c, true, NULL, VEC_ZERO);
+                body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, TONGUE_COLOR, c, true, NULL, VEC_ZERO);
                 vector_t direction = tongue_direction(player, cursor_dot);
                 body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
                 create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
@@ -435,12 +435,12 @@ void circ_draw(scene_t *scene, char *line){
     vector_t dimensions;
     if(strtod(list_get(list, 8), &holder) == 0){
         *c = 'P';
-        image_name = "demo/tarzan-ball.png";
+        image_name = "images/tarzan-ball.png";
         dimensions = (vector_t) {60, 60};
     }
     else{
         *c = 'E';
-        image_name = "demo/target-image.png";
+        image_name = "images/target-image.png";
         dimensions = (vector_t) {40, 40};
     }
 
@@ -472,11 +472,11 @@ void rect_draw(scene_t *scene, char *line){
     char *c = malloc(1);
     if(strtod(list_get(list, 8), &holder) == 0){
         *c = 'W';
-        sprintf(image, "demo/floor.png");
+        sprintf(image, "images/floor.png");
     }
     else{
         *c = 'K';
-        sprintf(image, "demo/lava.png");
+        sprintf(image, "images/lava.png");
     }
 
     body_t *body = rect_gen(scene, strtod(list_get(list, 0), &holder), strtod(list_get(list, 1), &holder),
@@ -528,7 +528,7 @@ char *get_level_name_from_num(size_t level_num) {
 scene_t *set_up_level(size_t level_num) {
     scene_t *scene = scene_init();
     char *background_name = malloc(30);
-    sprintf(background_name, "demo/background.png");
+    sprintf(background_name, "images/background.png");
     scene_set_background(scene, background_name, (vector_t) {MAX_X - MIN_X, MAX_Y - MIN_Y});
     INTERACTABLES = list_init(5, (free_func_t) body_free);
     
@@ -552,7 +552,7 @@ scene_t *set_up_level(size_t level_num) {
     char *c = malloc(1);
     *c = 'R';
     body_t *restart_button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {60, 465}, (rgb_color_t) {0.1, 0.1, 0.1}, c, 0, NULL);
-    body_add_image(restart_button, image_init("demo/button.png", (vector_t) {105, 55}, 0));
+    body_add_image(restart_button, image_init("images/button.png", (vector_t) {110, 60}, 0));
 
     return scene;
 }

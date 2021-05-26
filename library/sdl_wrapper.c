@@ -282,7 +282,6 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
 
         if (((char *) body_info)[0] == 'P' || ((char *) body_info)[0] == 'E') {
             render_body_image(body);
-            break;
         }
     }
 
