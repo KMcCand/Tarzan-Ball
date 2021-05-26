@@ -1,0 +1,75 @@
+{
+    "version": "2.0.0",
+    // Not _really_ necessary to run , but it's easier. Maybe.
+    "windows": {
+        "options": {
+            "env": {
+                "VsDevCmd": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\""
+            },
+            // All tasks that use "shell" will pass through this shell
+            "shell": {
+                // ... I can't really explain this.
+                // Just go with it. Maybe someone else knows more.
+                "executable": "cmd.exe",
+                "args": [
+                    "/k", "%VsDevCmd%", "&&"
+                ]
+            }
+        },
+    },
+    "tasks": [
+        {
+            "label": "make all",
+            "type": "process",
+            "command": "make",
+            "args": [
+                // Close the shell to make sure it can be reused
+                // by repeated tasks
+                "all", "&", "exit"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc", "$msCompile"]
+        },
+        {
+            "label": "make bin/bounce",
+            "type": "shell",
+            "command": "make",
+            "group": "build",
+            "args": [
+                "bin/bounce",
+                "&", "exit"
+            ],
+            "problemMatcher": ["$gcc", "$msCompile"],
+            "promptOnClose": true,
+        },
+        {
+            "label": "test",
+            "type": "shell",
+            "command": "make",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "args": [
+                "test", "&", "exit"
+            ],
+            "problemMatcher": ["$gcc", "$msCompile"]
+        },
+        // Works on any file that has a corresponding binary
+        {
+            "label": "make active file",
+            "type": "shell",
+            "command": "make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "args": [
+                "bin/${fileBasenameNoExtension}",
+                "&", "exit"
+            ],
+            "problemMatcher": ["$gcc", "$msCompile"],
+            "promptOnClose": true,
+        },
+    ]
+}

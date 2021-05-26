@@ -1,0 +1,50 @@
+{
+    // Easier to go through VsDevCmd than to hack PATH
+    "terminal.integrated.shell.windows": "cmd.exe",
+    "terminal.integrated.env.windows": {
+        "VsDevCmd": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\""
+    },
+    "terminal.integrated.shellArgs.windows": [
+        "/k",
+        "%VsDevCmd%",
+        "&&",
+        // CMD _sucks_, drop into PS immediately
+        "powershell.exe"
+    ],
+    "terminal.integrated.profiles.windows": {
+        // Other profiles that should probably be present for Reasons TM
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": [
+                "${env:windir}\\Sysnative\\cmd.exe",
+                "${env:windir}\\System32\\cmd.exe"
+            ],
+            "args": [],
+            "icon": "terminal-cmd"
+        },
+        "Visual Studio Developer Prompt": {
+            "path": [
+                "${env:windir}\\Sysnative\\cmd.exe",
+                "${env:windir}\\System32\\cmd.exe"
+            ],
+            "args": [
+                "/k",
+                // Easier to go through vcvars64 than to hack PATH
+                "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat",
+                "&&",
+                // CMD _sucks_, drop into PS immediately
+                "powershell.exe"
+            ],
+            "icon": "terminal-powershell",
+        },
+    },
+    // User-level only... Just delete when you're done with the course.
+    "terminal.integrated.defaultProfile.windows": "Visual Studio Developer Prompt",
+    "files.associations": {
+        "sdl_wrapper.h": "c",
+        "stdlib.h": "c"
+    }
+}

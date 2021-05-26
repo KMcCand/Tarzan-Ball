@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        // Windows-specific
+        {
+            "name": "Win32",
+            "intelliSenseMode": "msvc-x64",
+            "compilerPath": "cl.exe",
+            "cStandard": "c11",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Users/${env:USERNAME}/msvc/include"
+            ],
+            "defines": [
+                "_USE_MATH_DEFINES",
+                "_WIN32",
+                "_CRT_SECURE_NO_WARNINGS"
+            ]
+        },
+        // Default to clang for other systems
+        {
+            "name": "Mac",
+            "intelliSenseMode": "clang-x64",
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/Cellar",
+                "/opt/homebrew/include",
+                "/usr/local/include"
+            ]
+        },
+        {
+            "name": "Linux",
+            "intelliSenseMode": "clang-x64",
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/include"
+            ]
+        }
+    ],
+    "version": 4
+}
