@@ -53,7 +53,7 @@ const double FRICTION_COEFFICIENT = 30;
 
 const double GRAVITY = 3000;
 
-const double TONGUE_FORCE = 3000;
+const double TONGUE_FORCE = 300;
 
 // SARAH'S CONSTANT DON'T TOUCH
 // const double FRICTION_COEFFICIENT = 10;
@@ -63,6 +63,8 @@ const double TONGUE_FORCE = 3000;
 rgb_color_t WALL_COLOR = {.5, .5, .5};
 
 bool player_added = false;
+
+bool clicked = false;
 
 /**
  * Makes the body_t for the closed shape that is the outside of the cursor
@@ -190,7 +192,7 @@ void surface_friction(body_t *body1, body_t *body2, vector_t axis, void *aux){
 void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     scene_t *scene = (scene_t *) aux;
 
-    if(body_is_removed(body2)){
+    if(body_is_removed(body2) || (scene_get_body(scene, find_body_in_scene(scene, 'E', scene_bodies(scene))) == body2 && clicked)){
         return;
     }
     
@@ -344,8 +346,8 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     body_t *cursor_out = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'C', scene_bodies(scene)));
     body_t *cursor_dot = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'I', scene_bodies(scene)));
     body_t *player = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'P', scene_bodies(scene)));
-    body_t *target = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'E', scene_bodies(scene)));
     body_t *reset_button = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
+    body_t *target = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'E', scene_bodies(scene)));
     
     if (type == KEY_PRESSED) {
         switch (key) {
@@ -363,6 +365,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
                 create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
                 create_viable_tongue_collisions(scene, tongue_end);
+                clicked = false;
                 break;
             }
         }
@@ -370,6 +373,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     if(type == KEY_RELEASED){
         switch(key) {
             case MOUSE_CLICK: {
+                clicked = true;
                 double index = find_body_in_scene(scene, 'T', scene_bodies(scene));
                 if(index != -1){
                     scene_remove_body(scene, index);
@@ -377,21 +381,20 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
 
                 // CONSTRUCTION ZONE AHEAD
 
-                // list_t *forces = scene_get_forces(scene);
-                // for(size_t i = 0; i < list_size(forces); i++){
-                //     force_t *force = list_get(forces, i);
-                //     force_creator_t force_func = (force_creator_t) force_get_forcer(force);
-                //     if(force_func != (force_creator_t) tongue_interaction){
-                //         continue;
-                //     }
-                //     list_t *bodies = force_get_bodies(force);
-                //     body_t *body1 = (body_t *) list_get(bodies, 0);
-                //     body_t *body2 = (body_t *) list_get(bodies, 1);
-                //     if((body1 == player && body2 == target) || (body1 == target && body2 == player)){
-                //         printf("here?\n");
-                //         list_remove(forces, i);
-                //     }
-                // }
+                list_t *forces = scene_get_forces(scene);
+                for(size_t i = 0; i < list_size(forces); i++){
+                    force_t *force = list_get(forces, i);
+                    force_creator_t force_func = (force_creator_t) force_get_forcer(force);
+                    if(force_func != (force_creator_t) calc_tongue_force){
+                        continue;
+                    }
+                    list_t *bodies = force_get_bodies(force);
+                    body_t *body1 = (body_t *) list_get(bodies, 0);
+                    body_t *body2 = (body_t *) list_get(bodies, 1);
+                    if((body1 == player && body2 == target) || (body1 == target && body2 == player)){
+                        list_remove(forces, i);
+                    }
+                }
 
                 // END OF CONSTRUCTION ZONE
 
@@ -404,7 +407,6 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     if (type == MOUSE_ENGAGED) {
         switch (key) {
             case MOUSE_MOVED: {
-                //body_redefine_centroid(cursor, loc);
                 body_set_centroid(cursor_out, loc);
                 body_set_centroid(cursor_dot, loc);
                 break;
@@ -549,7 +551,8 @@ scene_t *set_up_level(size_t level_num) {
 
     char *c = malloc(1);
     *c = 'R';
-    body_t *button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {50, 475}, (rgb_color_t) {1, 0, 0}, c, 0, NULL);
+    body_t *restart_button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {60, 465}, (rgb_color_t) {0.1, 0.1, 0.1}, c, 0, NULL);
+    body_add_image(restart_button, image_init("demo/button.png", (vector_t) {105, 55}, 0));
 
     return scene;
 }
@@ -560,7 +563,7 @@ list_t *make_tutorial(){
     textbox_t *one = textbox_init(100, 100, 800, 40, "Press and hold the mouse to shoot your tongue and move!", 
                                       TTF_OpenFont("fonts/karvwood.otf", 12), (SDL_Color) {255, 0, 255});
     list_add(ret, one);
-    textbox_t *two = textbox_init(0, 15, 100, 30, "RESET", 
+    textbox_t *two = textbox_init(10, 25, 100, 30, "RESET", 
                                       TTF_OpenFont("fonts/arial.ttf", 12), (SDL_Color) {255, 255, 255});
     list_add(ret, two);
     return ret;
@@ -569,7 +572,7 @@ list_t *make_tutorial(){
 list_t *default_tbs(){
     list_t *ret = list_init(2, (free_func_t) textbox_free);
     // x, y, width, height
-    textbox_t *two = textbox_init(0, 15, 100, 30, "RESET", 
+    textbox_t *two = textbox_init(10, 25, 100, 30, "RESET", 
                                       TTF_OpenFont("fonts/arial.ttf", 12), (SDL_Color) {255, 255, 255});
     list_add(ret, two);
     return ret;
@@ -585,7 +588,7 @@ list_t *YOU_DIED(){
 }
 
 int main(int argc, char *argv[]) {
-    size_t current_level = 3;
+    size_t current_level = 1;
     scene_t *scene = set_up_level(current_level);
     list_t *textboxes;
 
