@@ -92,7 +92,7 @@ void body_free(body_t *body){
     free(body);
 }
 
-void body_set_image(body_t *body, image_t *image) {
+void body_add_image(body_t *body, image_t *image) {
     body->image = image;
     body->has_image = true;
 }

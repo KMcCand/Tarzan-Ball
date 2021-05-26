@@ -238,7 +238,7 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
     free(boundary);
     SDL_DestroyTexture(background_texture);
     
-    // Render all bodies except for the cursor and their images on top of them
+    // Render all bodies except for the cursor and the player image and put their images on top of them
     for (size_t i = 0; i < scene_bodies(scene); i++) {
         body_t *body = scene_get_body(scene, i);
         char *body_info = (char *) body_get_info(body);
@@ -248,18 +248,19 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
             sdl_draw_polygon(shape, body_get_color(body));
             list_free(shape);
             
-            if (body_has_image(body)) {
+            if (body_has_image(body) && ! ((char *) body_info)[0] != 'P') {
                 image_t *body_image = body_get_image(body);
                 vector_t centroid = body_get_centroid(scene_get_body(scene, i));
                 vector_t image_dimensions = image_get_dimensions(body_image);
-                // Optimization: have image_dimensions return an SDL_Rect *
+
                 SDL_Rect *image_bounds = malloc(sizeof(*image_bounds));
-                image_bounds->x = centroid.x - image_dimensions.x;
-                image_bounds->y = 500 - image_dimensions.y - centroid.y;
+                image_bounds->x = centroid.x - image_dimensions.x / 2;
+                image_bounds->y = 500 - image_dimensions.y / 2 - centroid.y;
                 image_bounds->w = image_dimensions.x;
                 image_bounds->h = image_dimensions.y;
+
                 SDL_Texture *image_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(body_image));
-                SDL_RenderCopyEx(renderer, image_texture, NULL, image_bounds, image_get_rotaion(body_image), NULL, SDL_FLIP_NONE);
+                SDL_RenderCopyEx(renderer, image_texture, NULL, image_bounds, image_get_rotation(body_image), NULL, SDL_FLIP_NONE);
                 free(image_bounds);
             }
         }
@@ -301,7 +302,6 @@ void sdl_render_text(scene_t *scene, list_t *textboxes){
         SDL_FreeSurface(surfaceMessage);
         SDL_DestroyTexture(Message);
     }
-    //sdl_show(scene);
 }
 
 void sdl_on_key(key_handler_t handler) {

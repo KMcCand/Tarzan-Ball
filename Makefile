@@ -1,5 +1,5 @@
 # List of demo programs
-DEMOS = tongue level tongue_text_test level_viewer
+DEMOS = tongue_text_test
 # List of C files in "libraries" that we provide
 STAFF_LIBS = test_util sdl_wrapper
 # List of C files in "libraries" that you will write.
@@ -103,11 +103,11 @@ bin/tongue_text_test: out/tongue_text_test.o out/sdl_wrapper.o $(STUDENT_OBJS)
 # and the library .o files. The only difference from the demo build command
 # is that it doesn't link the SDL libraries.
 bin/test_suite_%: out/test_suite_%.o out/test_util.o $(STUDENT_OBJS)
-	$(CC) $(CFLAGS) $(LIB_MATH) $^ -o $@
+	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 
 bin/student_tests: out/student_tests.o out/test_util.o $(STUDENT_OBJS)
-	$(CC) $(CFLAGS) $(LIB_MATH) $^ -o $@
+	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 # Runs the tests. "$(TEST_BINS)" requires the test executables to be up to date.
 # The command is a simple shell script:
@@ -135,6 +135,36 @@ clean:
 .PHONY: all clean test
 # Tells Make not to delete the .o files after the executable is built
 .PRECIOUS: out/%.o
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Windows is _special_
 # Define a completely separate set of rules, because syntax and shell
@@ -258,7 +288,7 @@ bin/test_suite_% bin\test_suite_%: bin/test_suite_%.exe ;
 # CMD commands to test and clean
 
 bin/student_tests.exe: out/student_tests.obj out/test_util.obj $(STUDENT_OBJS)
-	$(CC) $(CFLAGS) $(LIB_MATH) $^ -o $@
+	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 # "$(subst /,\, $(TEST_BINS))" replaces "/" with "\" for
 #	Windows paths,

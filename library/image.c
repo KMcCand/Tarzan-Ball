@@ -1,5 +1,4 @@
 #include "image.h"
-#include "sdl_wrapper.h"
 #include <assert.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -15,7 +14,6 @@ image_t *image_init(char *name, vector_t dimensions, double rotation) {
     image_t *image = malloc(sizeof(image_t));
     image->surface = IMG_Load(name);
     assert(image->surface != NULL && "Could not generate SDL_Surface from image name");
-    free(name);
     image->dimensions = dimensions;
     image->rotation = rotation;
     return image;

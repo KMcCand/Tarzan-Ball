@@ -5,10 +5,12 @@
 #include <string.h>
 #include "forces.h"
 #include "polygon.h"
+#include "body.h"
 #include "scene.h"
 #include "sdl_wrapper.h"
 #include "collision.h"
 #include "textbox.h"
+#include "vector.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -139,8 +141,8 @@ body_t *rect_gen(scene_t *scene, double width, double height, double mass, vecto
 
     polygon_rotate(rect_pts, rotation, center);
     body_t *bod = body_init_with_info(rect_pts, mass, color, c, free);
-    if (strlen(image_name) > 0) {
-        body_add_image(bod, image_init(image_name, (vector_t) {width, height}, rotation));
+    if (image_name != NULL) {
+        body_add_image(bod, image_init(image_name, (vector_t) {width, height}, rotation * 180 / M_PI));
     }
     scene_add_body(scene, bod);
     return bod;
@@ -226,11 +228,10 @@ void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
 
     char *c = malloc(1);
     *c = 'L';
-    char *no_image = malloc(0);
-    rect_gen(scene, TONGUE_WIDTH, distance, INFINITY, center, TONGUE_COLOR, c, angle, no_image);    
+    rect_gen(scene, TONGUE_WIDTH, distance, INFINITY, center, TONGUE_COLOR, c, angle, NULL);    
 }
 
-body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, char *image_name, bool add){
+body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, bool add, char *image_name, vector_t image_dimensions){
     list_t *ball_points = list_init(points, (free_func_t) vec_free);
     for (size_t i = 0; i < points; i++) {
         double angle = 2 * M_PI * i / points; 
@@ -241,10 +242,10 @@ body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius,
     }
     polygon_rotate(ball_points, M_PI / points, start);
     body_t *ball_bod = body_init_with_info(ball_points, mass, color, c, (free_func_t) free);
-    if (strlen(image_name) > 0) {
-        body_add_image(ball_bod, image_init(image_name, (vector_t) {2 * radius, 2 * radius}, 0.0));
+    if (image_name != NULL) {
+        body_add_image(ball_bod, image_init(image_name, image_dimensions, 0.0));
     }
-    if(add){
+    if (add){
         scene_add_body(scene, ball_bod);
     }
     return ball_bod;
@@ -259,9 +260,7 @@ void freeze_tongue_end(body_t *tongue, body_t *wall, vector_t axis, void *aux) {
     char *c = malloc(1);
     *c = 'T';
     vector_t center = body_get_centroid(tongue);
-
-    char *no_image = malloc(0);
-    body_t *new_tongue = circle_gen(scene, 10, center, TONGUE_WIDTH / 2, INFINITY, TONGUE_COLOR, c, false, no_image);
+    body_t *new_tongue = circle_gen(scene, 10, center, TONGUE_WIDTH / 2, INFINITY, TONGUE_COLOR, c, false, NULL, VEC_ZERO);
     body_t *player = scene_get_body(scene, index_player);
 
     //create_interaction(scene, player, new_tongue, (collision_handler_t) tongue_interaction, scene, NULL);
@@ -296,7 +295,6 @@ vector_t tongue_direction(body_t *body1, body_t *body2){
 void create_viable_player_collisions(scene_t *scene, body_t *player){
     for(size_t i = 0; i < list_size(INTERACTABLES); i++){
         create_physics_collision(scene, BALL_ELASTICITY, player, list_get(INTERACTABLES, i));
-        //create_collision(scene, player, (body_t *) list_get(INTERACTABLES, i), (collision_handler_t) impulse_collision, scene, NULL);
         create_collision(scene, player, (body_t *) list_get(INTERACTABLES, i), (collision_handler_t) surface_friction, scene, NULL);
     }
 }
@@ -311,25 +309,22 @@ void create_viable_tongue_collisions(scene_t *scene, body_t *tongue){
 void bouncy_wall_gen(scene_t *scene){
     char *c = malloc(1);
     *c = 'W';
-    char *no_image = malloc(0);
     body_t *left_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                 (vector_t) {-MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, no_image);
+                                 (vector_t) {-MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, left_wall);
     //create_physics_collision(scene, BALL_ELASTICITY, left_wall, player);
 
     c = malloc(1);
     *c = 'W';
-    no_image = malloc(0);
     body_t *right_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                  (vector_t) {2 * MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, no_image);
+                                  (vector_t) {2 * MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, right_wall);
     //create_physics_collision(scene, BALL_ELASTICITY, right_wall, player);
     
     c = malloc(1);
     *c = 'W';
-    no_image = malloc(0);
     body_t *top_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                  (vector_t) {MAX_X / 2, 2 * MAX_Y}, (rgb_color_t) {1, 1, 1}, c, 0, no_image);
+                                  (vector_t) {MAX_X / 2, 2 * MAX_Y}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, top_wall);
     //create_physics_collision(scene, BALL_ELASTICITY, top_wall, player);
 }
@@ -363,8 +358,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
 
                 char *c = malloc(1);
                 *c = 'T';
-                char *no_image = malloc(0);
-                body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, WHITE_COLOR, c, true, no_image);
+                body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, WHITE_COLOR, c, true, NULL, VEC_ZERO);
                 vector_t direction = tongue_direction(player, cursor_dot);
                 body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
                 create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
@@ -381,6 +375,8 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                     scene_remove_body(scene, index);
                 }
 
+                // CONSTRUCTION ZONE AHEAD
+
                 // list_t *forces = scene_get_forces(scene);
                 // for(size_t i = 0; i < list_size(forces); i++){
                 //     force_t *force = list_get(forces, i);
@@ -396,6 +392,8 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 //         list_remove(forces, i);
                 //     }
                 // }
+
+                // END OF CONSTRUCTION ZONE
 
                 tongue_removal(scene);
 
@@ -415,7 +413,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     }
 }
 
-void circ_draw(scene_t *scene, char *line, char *image_name){
+void circ_draw(scene_t *scene, char *line){
     list_t *list = list_init(10, free);
 
     char *ptr = malloc(200);
@@ -431,25 +429,30 @@ void circ_draw(scene_t *scene, char *line, char *image_name){
 	}
 
     char *c = malloc(1);
-
+    char *image_name = malloc(20);
+    vector_t dimensions;
     if(strtod(list_get(list, 8), &holder) == 0){
         *c = 'P';
+        image_name = "demo/tarzan-ball.png";
+        dimensions = (vector_t) {60, 60};
     }
     else{
         *c = 'E';
+        image_name = "demo/target-image.png";
+        dimensions = (vector_t) {40, 40};
     }
 
     body_t *body = circle_gen(scene, strtod(list_get(list, 0), &holder), (vector_t) {strtod(list_get(list, 1),
             &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
-            strtod(list_get(list, 7), &holder)}, c, true, image_name);
+            strtod(list_get(list, 7), &holder)}, c, true, image_name, dimensions);
     if(player_added){
         list_add(INTERACTABLES, body);
     }
     player_added = true;
 }
 
-list_t *rect_draw(scene_t *scene, char *line, char *image_name){
+void rect_draw(scene_t *scene, char *line){
     //pulled from: https://www.codingame.com/playgrounds/14213/how-to-play-with-strings-in-c/string-split
     list_t *list = list_init(10, free);
     char *ptr = malloc(200);
@@ -477,25 +480,12 @@ list_t *rect_draw(scene_t *scene, char *line, char *image_name){
     body_t *body = rect_gen(scene, strtod(list_get(list, 0), &holder), strtod(list_get(list, 1), &holder),
             strtod(list_get(list, 2), &holder), (vector_t) {strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder)}, (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
-            strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image_name);
+            strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image);
     list_add(INTERACTABLES, body);
 
     if(*c == 'K'){
         create_half_destruction(scene, body, scene_get_body(scene, find_body_in_scene(scene, 'P', scene_bodies(scene))));
     }
-    
-    list_t *info = list_init(3, free);
-    double *d = malloc(sizeof(double));
-    *d = strtod(list_get(list, 0), &holder);
-    list_add(info, d);
-    d = malloc(sizeof(double));
-    *d = strtod(list_get(list, 1), &holder); 
-    list_add(info, d);
-    d = malloc(sizeof(double));
-    *d = strtod(list_get(list, 9), &holder); 
-    list_add(info, d);
-    list_add(info, image);
-    return info;    
 }
 
 int level_init(scene_t *scene, char *file_name) {
@@ -509,14 +499,12 @@ int level_init(scene_t *scene, char *file_name) {
         if(strcmp(line, "WALLS\n") == 0){
             part = 1;
         }
-        if(part == 0 && strcmp(line, "PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0){
-            char *no_image = malloc(0);
-            circ_draw(scene, line, no_image);
+        if(part == 0 && strcmp(line, "PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0) {
+            circ_draw(scene, line);
             continue;
         }
-        if(strcmp(line,"PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0 && strcmp(line, "WALLS\n") != 0){
-            char *no_image = malloc(0);
-            list_t *info = rect_draw(scene, line, no_image);
+        if(strcmp(line,"PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0 && strcmp(line, "WALLS\n") != 0) {
+            rect_draw(scene, line);
         }
         bodies++;
     }
@@ -538,7 +526,7 @@ char *get_level_name_from_num(size_t level_num) {
 scene_t *set_up_level(size_t level_num) {
     scene_t *scene = scene_init();
     char *background_name = malloc(30);
-    *background_name = "demo/background.png";
+    sprintf(background_name, "demo/background.png");
     scene_set_background(scene, background_name, (vector_t) {MAX_X - MIN_X, MAX_Y - MIN_Y});
     INTERACTABLES = list_init(5, (free_func_t) body_free);
     
@@ -561,9 +549,7 @@ scene_t *set_up_level(size_t level_num) {
 
     char *c = malloc(1);
     *c = 'R';
-
-    char *no_image = mmalloc(0);
-    body_t *button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {50, 475}, (rgb_color_t) {1, 0, 0}, c, 0, no_image);
+    body_t *button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {50, 475}, (rgb_color_t) {1, 0, 0}, c, 0, NULL);
 
     return scene;
 }
@@ -599,20 +585,13 @@ list_t *YOU_DIED(){
 }
 
 int main(int argc, char *argv[]) {
-    char *TEST = malloc(0);
-    if (strlen(TEST) == 0) {
-        printf("\n\n\nWORKSSSSS\n\n\n");
-    }
-    else {
-        printf("\n\n\nDOENSN'T WORK\n\n\n");
-    }
-
-
-    size_t current_level = 1;
+    size_t current_level = 3;
     scene_t *scene = set_up_level(current_level);
     list_t *textboxes;
 
     bool died = false;
+
+    int count = 0;
 
     while (!sdl_is_done(scene)) {
         sdl_on_key((key_handler_t) on_key);
@@ -622,10 +601,13 @@ int main(int argc, char *argv[]) {
             textboxes = make_tutorial();
         }
         else {
-            if(died){
+            if(died && count < 50){
                 textboxes = YOU_DIED();
+                count++;
             }
             else{
+                count = 0;
+                died = false;
                 textboxes = default_tbs();
             }
         }
