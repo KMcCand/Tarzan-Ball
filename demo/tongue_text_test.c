@@ -50,10 +50,9 @@ const double CURSOR_DOT_RADIUS = 1;
 const size_t CURSOR_DOT_NPOINTS = 10;
 
 const double FRICTION_COEFFICIENT = 30;
-
 const double GRAVITY = 3000;
-
 const double TONGUE_FORCE = 3000;
+const size_t DIED_COUNT = 300;
 
 // SARAH'S CONSTANT DON'T TOUCH
 // const double FRICTION_COEFFICIENT = 10;
@@ -448,6 +447,7 @@ void circ_draw(scene_t *scene, char *line){
             &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, true, image_name, dimensions);
+    //free(holder);
     if(player_added){
         list_add(INTERACTABLES, body);
     }
@@ -483,6 +483,8 @@ void rect_draw(scene_t *scene, char *line){
             strtod(list_get(list, 2), &holder), (vector_t) {strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder)}, (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image);
+    
+    //free(holder);
     list_add(INTERACTABLES, body);
 
     if(*c == 'K'){
@@ -522,6 +524,28 @@ char *get_level_name_from_num(size_t level_num) {
     sprintf(level_name, "levels/level_%zu.txt", level_num);
     return level_name;
 }
+
+// /**
+//  * Adds the text-box.png image centered in the screen in order to write text to ask
+//  * the user if they want to continue or quit.
+//  */ 
+// void add_text_image(scene_t *scene) {
+//     char *c = malloc(1);
+//     *c = 'B';
+//     char *text_box_title = malloc(30);
+//     sprintf(text_box_title, "images/text-box.png");
+//     rect_gen(scene, 0, 0, INFINITY, (vector_t) {(MAX_X + MIN_X) / 2, (MAX_Y + MIN_Y) / 2}, WHITE_COLOR, c, 0, text_box_title);
+// }
+
+// /**
+//  * Removes the text-box.png image from scene if it is there.
+//  */ 
+// void remove_text_image(scene_t *scene) {
+//     double index = find_body_in_scene(scene, 'B', scene_bodies(scene));
+//     if (index > -1) {
+//         body_remove(scene_get_body(scene, index));
+//     }
+// }
 
 // Sets up everything for a level outlined in the textfile at level_name and returns
 // a pointer to the set up scene_t
@@ -588,12 +612,11 @@ list_t *YOU_DIED(){
 }
 
 int main(int argc, char *argv[]) {
-    size_t current_level = 1;
+    size_t current_level = 3;
     scene_t *scene = set_up_level(current_level);
     list_t *textboxes;
 
     bool died = false;
-
     int count = 0;
 
     while (!sdl_is_done(scene)) {
@@ -604,14 +627,18 @@ int main(int argc, char *argv[]) {
             textboxes = make_tutorial();
         }
         else {
-            if(died && count < 50){
+            if (died && count < DIED_COUNT) {
                 textboxes = YOU_DIED();
+                // if (count == 0) {
+                //     add_text_image(scene);
+                // }
                 count++;
             }
-            else{
+            else {
                 count = 0;
                 died = false;
                 textboxes = default_tbs();
+                // remove_text_image(scene);
             }
         }
 
@@ -638,7 +665,7 @@ int main(int argc, char *argv[]) {
         }
         
         // loss condition, player is no longer there
-        if(find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1){
+        if (find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1){
             died = true;
             player_added = false;
             scene_free(scene);

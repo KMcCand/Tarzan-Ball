@@ -85,6 +85,24 @@ void scene_set_background(scene_t *scene, char *name, vector_t dimensions);
 image_t *scene_get_background(scene_t *scene);
 
 /**
+ * Sets the text image, the image that comes up at the end of the level,
+ * to an image at name with width and height according to dimensions.
+ */
+void scene_set_text_image(scene_t *scene, char *name, vector_t dimensions);
+
+/**
+ * Returns the text_image image_t for a scene
+ *
+ * @param scene a pointer to a scene returned from scene_init()
+ */
+image_t *scene_get_text_image(scene_t *scene);
+
+/**
+ * Returns true if the scene has a text image, false if not.
+ */
+bool scene_has_text_image(scene_t *scene);
+
+/**
  * @deprecated Use body_remove() instead
  *
  * Removes and frees the body at a given index from a scene.

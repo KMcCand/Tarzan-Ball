@@ -21,6 +21,8 @@ typedef struct scene {
     size_t size;
     bool has_background;
     image_t *background;
+    image_t *text_image;
+    bool has_text_image;
 } scene_t;
 
 force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_func_t freer) {
@@ -55,6 +57,8 @@ scene_t *scene_init(void) {
     assert(scene != NULL);
     scene->background = NULL;
     scene->has_background = false;
+    scene->text_image = NULL;
+    scene->has_text_image = false;
     return scene;
 }
 
@@ -63,6 +67,9 @@ void scene_free(scene_t *scene) {
     list_free(scene->forces);
     if (scene->has_background) {
         image_free(scene->background);
+    }
+    if (scene->has_text_image) {
+        image_free(scene->text_image);
     }
     free(scene);
 }
@@ -85,12 +92,27 @@ void scene_remove_body(scene_t *scene, size_t index) {
 }
 
 void scene_set_background(scene_t *scene, char *name, vector_t dimensions) {
+    scene->has_background = true;
     scene->background = image_init(name, dimensions, 0);
 }
 
 image_t *scene_get_background(scene_t *scene) {
     assert(scene->background != NULL && "The scene does not have a background!");
     return scene->background;
+}
+
+void scene_set_text_image(scene_t *scene, char *name, vector_t dimensions) {
+    scene->has_text_image = true;
+    scene->text_image = image_init(name, dimensions, 0);
+}
+
+image_t *scene_get_text_image(scene_t *scene) {
+    assert(scene->text_image != NULL && "The scene does not have a text image!");
+    return scene->text_image;
+}
+
+bool scene_has_text_image(scene_t *scene) {
+    return scene_has_text_image;
 }
 
 void scene_remove_body_extra(scene_t *scene, size_t index){

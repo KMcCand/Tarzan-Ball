@@ -37,6 +37,16 @@ vector_t image_get_dimensions(image_t *image);
 double image_get_rotation(image_t *image);
 
 /**
+* Sets whether the image will be rendered or not to new_value
+*/
+void image_set_show(image_t *image, bool new_value);
+
+/**
+* Returns whether the image will be rendered or not
+*/
+bool image_get_show(image_t *image);
+
+/**
 * Frees the memory associated with image
 */
 void image_free(image_t *image);
