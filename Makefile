@@ -1,5 +1,5 @@
 # List of demo programs
-DEMOS = tongue_text_test
+DEMOS = tongue_text_test level
 # List of C files in "libraries" that we provide
 STAFF_LIBS = test_util sdl_wrapper
 # List of C files in "libraries" that you will write.

@@ -103,6 +103,7 @@ char get_keycode(SDL_Keycode key) {
         case SDLK_d: return D_KEY;
         case SDLK_t: return T_KEY;
         case SDLK_k: return K_KEY;
+        case SDLK_q: return Q_KEY;
         default:
             // Only process 7-bit ASCII characters
             return key == (SDL_Keycode) (char) key ? key : '\0';
@@ -233,6 +234,7 @@ void render_body_image(body_t *body) {
 
         SDL_Texture *image_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(body_image));
         SDL_RenderCopyEx(renderer, image_texture, NULL, image_bounds, image_get_rotation(body_image), NULL, SDL_FLIP_NONE);
+        SDL_DestroyTexture(image_texture);
         free(image_bounds);
     }
 }
@@ -253,11 +255,12 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
     SDL_RenderDrawRect(renderer, boundary);
 
     // Render the background image under everything. Potential optimization: this doesn't have to be done over and over again
-    SDL_Texture *background_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(scene_get_background(scene)));
-    assert(background_texture != NULL && "Scene background texture is null!");
-    SDL_RenderCopyEx(renderer, background_texture, NULL, boundary, 0, NULL, SDL_FLIP_NONE);
-    free(boundary);
-    SDL_DestroyTexture(background_texture);
+    if (scene_has_background(scene)) {
+        SDL_Texture *background_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(scene_get_background(scene)));
+        assert(background_texture != NULL && "Scene background texture is null!");
+        SDL_RenderCopyEx(renderer, background_texture, NULL, boundary, 0, NULL, SDL_FLIP_NONE);
+        SDL_DestroyTexture(background_texture);
+    }
     
     // Render all bodies and their images on top of them except for the cursor and the player image
     for (size_t i = 0; i < scene_bodies(scene); i++) {
@@ -275,7 +278,7 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
         }
     }
 
-    // Render the target image and player image on top of everything except for cursor
+    // Render the target image and player image on top of everything except for cursor and text_image popup
     for (size_t i = 0; i < scene_bodies(scene); i++) {
         body_t *body = scene_get_body(scene, i);
         char *body_info = (char *) body_get_info(body);
@@ -284,6 +287,22 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
             render_body_image(body);
         }
     }
+
+    // Render the text image popup
+    if (scene_show_text_image(scene)) {
+        SDL_Texture *text_image_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(scene_get_text_image(scene)));
+        assert(text_image_texture != NULL && "Scene text_image texture is null!");
+        vector_t dimensions = image_get_dimensions(scene_get_text_image(scene));
+        boundary->x = (min_pixel.x + max_pixel.x - dimensions.x) / 2;
+        boundary->y = (max_pixel.y + min_pixel.y - dimensions.y) / 2;
+        boundary->w = dimensions.x;
+        boundary->h = dimensions.y;
+        SDL_RenderCopyEx(renderer, text_image_texture, NULL, boundary, 0, NULL, SDL_FLIP_NONE);
+        SDL_DestroyTexture(text_image_texture);
+    }
+    
+    // Render all text
+    sdl_render_text(scene, textboxes);
 
     // Render the cursor last to make it on top of everything
     for (size_t i = 0; i < scene_bodies(scene); i++) {
@@ -296,9 +315,8 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
         }
     }
 
-    sdl_render_text(scene, textboxes);
-
     SDL_RenderPresent(renderer);
+    free(boundary);
 }
 
 void sdl_render_scene(scene_t *scene, list_t *textboxes) {
@@ -309,8 +327,8 @@ void sdl_render_scene(scene_t *scene, list_t *textboxes) {
 void sdl_render_text(scene_t *scene, list_t *textboxes){
     for(size_t i = 0; i < list_size(textboxes); i++) {
         textbox_t *tb= (textbox_t *) list_get(textboxes, i);
-        SDL_Surface* surfaceMessage = TTF_RenderText_Blended_Wrapped(textbox_get_font(tb), textbox_get_text(tb),
-                                                                     textbox_get_color(tb), textbox_get_width(tb)/2); 
+        SDL_Surface* surfaceMessage = TTF_RenderText_Solid(textbox_get_font(tb), textbox_get_text(tb),
+                                                                     textbox_get_color(tb)); 
         SDL_Texture* Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
         SDL_Rect rect; //create a rect
         rect.x = textbox_get_x(tb);  //controls the rect's x coordinate 

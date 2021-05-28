@@ -9,7 +9,7 @@
 
 // Values passed to a key handler when the given key is pressed
 typedef enum {
-    LEFT_ARROW = 1, 
+    LEFT_ARROW = 1,
     UP_ARROW = 2, 
     RIGHT_ARROW = 3, 
     DOWN_ARROW = 4,
@@ -21,7 +21,8 @@ typedef enum {
     P_KEY = 10,
     D_KEY = 11,
     T_KEY = 12,
-    K_KEY = 13
+    K_KEY = 13,
+    Q_KEY = 14
 } arrow_key_t;
 
 /**

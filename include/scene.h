@@ -98,9 +98,19 @@ void scene_set_text_image(scene_t *scene, char *name, vector_t dimensions);
 image_t *scene_get_text_image(scene_t *scene);
 
 /**
- * Returns true if the scene has a text image, false if not.
+ * Returns whether the scene has a background or not.
+ */ 
+bool scene_has_background(scene_t *scene);
+
+/**
+ * Sets whether to show the text image or not to new_value
  */
-bool scene_has_text_image(scene_t *scene);
+void scene_set_show_text_image(scene_t *scene, bool new_value);
+
+/**
+ * Returns whether or not the text image will be rendered
+ */
+bool scene_show_text_image(scene_t *scene);
 
 /**
  * @deprecated Use body_remove() instead

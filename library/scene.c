@@ -23,6 +23,7 @@ typedef struct scene {
     image_t *background;
     image_t *text_image;
     bool has_text_image;
+    bool show_text_image;
 } scene_t;
 
 force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_func_t freer) {
@@ -34,15 +35,19 @@ force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_fun
     return force;
 }
 
-list_t *force_get_bodies(force_t *force){
+list_t *force_get_bodies(force_t *force) {
     return force->bodies;
 }
 
-void *force_get_forcer(force_t *force){
+void *force_get_forcer(force_t *force) {
     return force->forcer;
 }
 
-void force_free(force_t *force){
+bool scene_has_background(scene_t *scene) {
+    return scene->has_background;
+}
+
+void force_free(force_t *force) {
     if(force->free_func != NULL){
         force->free_func(force->aux);
     }
@@ -58,7 +63,7 @@ scene_t *scene_init(void) {
     scene->background = NULL;
     scene->has_background = false;
     scene->text_image = NULL;
-    scene->has_text_image = false;
+    scene->show_text_image = false;
     return scene;
 }
 
@@ -111,8 +116,12 @@ image_t *scene_get_text_image(scene_t *scene) {
     return scene->text_image;
 }
 
-bool scene_has_text_image(scene_t *scene) {
-    return scene_has_text_image;
+void scene_set_show_text_image(scene_t *scene, bool new_value) {
+    scene->show_text_image = new_value;
+}
+
+bool scene_show_text_image(scene_t *scene) {
+    return scene->show_text_image;
 }
 
 void scene_remove_body_extra(scene_t *scene, size_t index){

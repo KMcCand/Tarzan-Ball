@@ -387,7 +387,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
 
 int main(int argc, char *argv[]) {
     RECTANGLES = list_init(3, free);
-    sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y}, list_init(2, free), list_init(2, free), list_init(2, free));
+    sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y});
     scene_t *scene = scene_init();
 
     starting_rect_gen(scene, (vector_t) {500, 250});
@@ -398,7 +398,7 @@ int main(int argc, char *argv[]) {
         sdl_on_key((key_handler_t) on_key);
 
         scene_tick(scene, dt);
-        sdl_render_scene(scene);
+        sdl_render_scene(scene, list_init(2, free));
     }
 
     int player_int = 0;

@@ -53,8 +53,7 @@ SDL_Color textbox_get_color(textbox_t *textbox) {
 }
 
 void textbox_free(textbox_t *textbox) {
-    free(textbox->text);
-    free(textbox->font);
+    TTF_CloseFont(textbox->font);
     free(textbox);
 }
 
