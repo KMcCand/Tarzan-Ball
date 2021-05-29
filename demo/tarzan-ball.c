@@ -3,6 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <assert.h>
 #include "forces.h"
 #include "polygon.h"
 #include "body.h"
@@ -53,6 +54,9 @@ const double FRICTION_COEFFICIENT = 30;
 const double GRAVITY = 3000;
 const double TONGUE_FORCE = 3000;
 const size_t DIED_COUNT = 300;
+const vector_t MENU_BUTTON_CENTER = (vector_t) {60, 465};
+size_t LOADING_SCREEN_NUM_RECTANGLES = 80;
+double LOADING_SCREEN_RECTANGLE_HEIGHT = 30;
 
 // SARAH'S CONSTANT DON'T TOUCH
 // const double FRICTION_COEFFICIENT = 10;
@@ -67,9 +71,10 @@ bool clicked = false;
 /**
  * TODO:
  * - Fix level 2 players spawning below platforms sometimes
- * - Fix memory leaks (flower f for mallocs, and text boxes)
  * - Tongue getting stuck sometimes (Julian knows a lot abt this)
  * - Fix the white outline on text image
+ * - Assertion failed: (index < list->size) when we try to get to the next level
+ * - Need a win screen. Maybe a celebration picture of Tarzan
  */ 
 
 /**
@@ -183,11 +188,9 @@ void surface_friction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     vector_t perp_axis = (vector_t) {axis.y, -1 * axis.x};
 
     double mult = vec_dot(gravity, axis);
-
     double friction = FRICTION_COEFFICIENT * fabs(mult);
 
     vector_t velocity = body_get_velocity(body1);
-
     vector_t vel_proj = vec_multiply(vec_dot(velocity, perp_axis), perp_axis);
     vel_proj = (vector_t) {-1 * vel_proj.x, vel_proj.y};
     vector_t friction_force = vec_multiply(friction, vel_proj);
@@ -209,9 +212,7 @@ void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
 
     vector_t body1_cen = body_get_centroid(body1);
     vector_t body2_cen = body_get_centroid(body2);
-
     vector_t difference = vec_subtract(body2_cen, body1_cen);
-
     vector_t center = vec_multiply(.5, vec_add(body1_cen, body2_cen));
     
     double distance = sqrt(difference.x * difference.x + difference.y * difference.y);
@@ -271,9 +272,6 @@ void freeze_tongue_end(body_t *tongue, body_t *wall, vector_t axis, void *aux) {
     body_t *new_tongue = circle_gen(scene, 10, center, TONGUE_WIDTH / 2, INFINITY, TONGUE_COLOR, c, false, NULL, VEC_ZERO);
     body_t *player = scene_get_body(scene, index_player);
 
-    //create_interaction(scene, player, new_tongue, (collision_handler_t) tongue_interaction, scene, NULL);
-    //create_tongue_force(scene, TONGUE_FORCE, player, new_tongue, INTERACTABLES);
-
     body_t *goal = scene_get_body(scene, index_goal);
     if(find_collision(body_get_shape(new_tongue), body_get_shape(goal)).collided){
         create_tongue_force(scene, TONGUE_FORCE, player, goal, INTERACTABLES);
@@ -318,23 +316,20 @@ void bouncy_wall_gen(scene_t *scene){
     char *c = malloc(1);
     *c = 'W';
     body_t *left_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                 (vector_t) {-MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
+                (vector_t) {-MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, left_wall);
-    //create_physics_collision(scene, BALL_ELASTICITY, left_wall, player);
 
     c = malloc(1);
     *c = 'W';
     body_t *right_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                  (vector_t) {2 * MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
+                (vector_t) {2 * MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, right_wall);
-    //create_physics_collision(scene, BALL_ELASTICITY, right_wall, player);
     
     c = malloc(1);
     *c = 'W';
     body_t *top_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
-                                  (vector_t) {MAX_X / 2, 2 * MAX_Y}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
+                (vector_t) {MAX_X / 2, 2 * MAX_Y}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
     list_add(INTERACTABLES, top_wall);
-    //create_physics_collision(scene, BALL_ELASTICITY, top_wall, player);
 }
 
 void tongue_removal(scene_t *scene){
@@ -349,12 +344,9 @@ void tongue_removal(scene_t *scene){
 
 void circ_draw(scene_t *scene, char *line){
     list_t *list = list_init(10, free);
-
     char *ptr = malloc(200);
 	const char delim[2] = " ";
-
     char *holder = malloc(100);
-
 	ptr = strtok(line, delim);
 
 	while(ptr != NULL){
@@ -365,12 +357,12 @@ void circ_draw(scene_t *scene, char *line){
     char *c = malloc(1);
     char *image_name = malloc(20);
     vector_t dimensions;
-    if(strtod(list_get(list, 8), &holder) == 0){
+    if (strtod(list_get(list, 8), &holder) == 0) {
         *c = 'P';
         image_name = "images/tarzan-ball.png";
         dimensions = (vector_t) {60, 60};
     }
-    else{
+    else {
         *c = 'E';
         image_name = "images/target-image.png";
         dimensions = (vector_t) {40, 40};
@@ -380,11 +372,11 @@ void circ_draw(scene_t *scene, char *line){
             &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, true, image_name, dimensions);
-    //free(holder);
-    if(player_added){
+    if (player_added) {
         list_add(INTERACTABLES, body);
     }
     player_added = true;
+    free(ptr);
 }
 
 void rect_draw(scene_t *scene, char *line){
@@ -416,13 +408,13 @@ void rect_draw(scene_t *scene, char *line){
             strtod(list_get(list, 2), &holder), (vector_t) {strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder)}, (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image);
-    
-    //free(holder);
     list_add(INTERACTABLES, body);
 
     if(*c == 'K'){
         create_half_destruction(scene, body, scene_get_body(scene, find_body_in_scene(scene, 'P', scene_bodies(scene))));
     }
+    free(ptr);
+    // Find a way to free holder?
 }
 
 int level_init(scene_t *scene, char *file_name) {
@@ -447,7 +439,7 @@ int level_init(scene_t *scene, char *file_name) {
     }
 
     fclose(f);
-    // free line, a char * initialized earlier in this method?
+    free(line);
     return bodies;
 }
 
@@ -478,7 +470,6 @@ scene_t *set_up_level(size_t level_num) {
 
     draw_cursor_outside(scene, VEC_ZERO);
     draw_cursor_dot(scene, VEC_ZERO);
-
     bouncy_wall_gen(scene);
 
     create_viable_player_collisions(scene, scene_get_body(scene, 0));
@@ -490,8 +481,8 @@ scene_t *set_up_level(size_t level_num) {
 
     char *c = malloc(1);
     *c = 'R';
-    body_t *restart_button = rect_gen(scene, 100, 50, INFINITY, (vector_t) {60, 465}, (rgb_color_t) {0.1, 0.1, 0.1}, c, 0, NULL);
-    body_add_image(restart_button, image_init("images/button.png", (vector_t) {110, 60}, 0));
+    body_t *menu_button = rect_gen(scene, 100, 50, INFINITY, MENU_BUTTON_CENTER, (rgb_color_t) {0.1, 0.1, 0.1}, c, 0, NULL);
+    body_add_image(menu_button, image_init("images/button.png", (vector_t) {110, 60}, 0));
 
     return scene;
 }
@@ -502,7 +493,7 @@ list_t *make_tutorial(){
     textbox_t *one = textbox_init(100, 100, 800, 45, "Press and hold the mouse to shoot your tongue and move!", 
                                       TTF_OpenFont("fonts/karvwood.otf", 200), (SDL_Color) {255, 0, 255});
     list_add(ret, one);
-    textbox_t *two = textbox_init(10, 25, 100, 30, "RESET", 
+    textbox_t *two = textbox_init(10, 25, 100, 30, "MENU", 
                                       TTF_OpenFont("fonts/arial.ttf", 120), (SDL_Color) {255, 255, 255});
     list_add(ret, two);
     return ret;
@@ -511,7 +502,7 @@ list_t *make_tutorial(){
 list_t *default_tbs(){
     list_t *ret = list_init(2, (free_func_t) textbox_free);
     // x, y, width, height
-    textbox_t *two = textbox_init(10, 25, 100, 30, "RESET", 
+    textbox_t *two = textbox_init(10, 25, 100, 30, "MENU", 
                                       TTF_OpenFont("fonts/arial.ttf", 120), (SDL_Color) {255, 255, 255});
     list_add(ret, two);
     return ret;
@@ -531,7 +522,7 @@ list_t *make_win_level() {
     textbox_t *four = textbox_init(400, 275, 200, 30, "Press \'q\' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 128, 255});
     list_add(ret, four);
-    textbox_t *five = textbox_init(10, 25, 100, 30, "RESET", 
+    textbox_t *five = textbox_init(10, 25, 100, 30, "MENU", 
                                       TTF_OpenFont("fonts/arial.ttf", 120), (SDL_Color) {255, 255, 255});
     list_add(ret, five);
     return ret;
@@ -556,44 +547,48 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     body_t *cursor_out = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'C', scene_bodies(scene)));
     body_t *cursor_dot = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'I', scene_bodies(scene)));
     body_t *player = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'P', scene_bodies(scene)));
-    body_t *reset_button = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
+    body_t *menu_button = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
     body_t *target = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'E', scene_bodies(scene)));
     
     if (type == KEY_PRESSED) {
         switch (key) {
             case MOUSE_CLICK: {
-                if(scene_show_text_image(scene)){
-                    break;
-                }
-                if (find_collision(body_get_shape(cursor_dot), body_get_shape(reset_button)).collided) {
-                    body_remove(reset_button);
-                    break;
-                }
+                if (! scene_show_text_image(scene)) {
+                    // If the user clicks on the menu button, display the menu image
+                    if (find_collision(body_get_shape(cursor_dot), body_get_shape(menu_button)).collided) {
+                        scene_set_show_text_image(scene, true);
+                        break;
+                    }
 
-                char *c = malloc(1);
-                *c = 'T';
-                body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, TONGUE_COLOR, c, true, NULL, VEC_ZERO);
-                vector_t direction = tongue_direction(player, cursor_dot);
-                body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
-                create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
-                create_viable_tongue_collisions(scene, tongue_end);
-                clicked = false;
-                break;
+                    char *c = malloc(1);
+                    *c = 'T';
+                    body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, TONGUE_COLOR, c, true, NULL, VEC_ZERO);
+                    vector_t direction = tongue_direction(player, cursor_dot);
+                    body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
+                    create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
+                    create_viable_tongue_collisions(scene, tongue_end);
+                    clicked = false;
+                    break;
+                }    
             }
             case Q_KEY: {
-                scene_free(scene);
-                sdl_free();
-                exit(0); //exit function, end program
+                if (scene_show_text_image(scene)) {
+                    scene_free(scene);
+                    sdl_free();
+                    exit(0);
+                }
+                break;
             }
             case R_KEY: {
                 if (scene_show_text_image(scene)) {
+                    body_set_elasticity(scene_get_body(scene, find_body_in_scene(scene, 'R', scene_bodies(scene))), 2);
                     scene_set_show_text_image(scene, false);
                 }
                 break;
             }
         }
     }
-    if(type == KEY_RELEASED){
+    if (type == KEY_RELEASED) {
         switch(key) {
             case MOUSE_CLICK: {
                 clicked = true;
@@ -603,16 +598,16 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 }
 
                 list_t *forces = scene_get_forces(scene);
-                for(size_t i = 0; i < list_size(forces); i++){
+                for (size_t i = 0; i < list_size(forces); i++) {
                     force_t *force = list_get(forces, i);
                     force_creator_t force_func = (force_creator_t) force_get_forcer(force);
-                    if(force_func != (force_creator_t) calc_tongue_force){
+                    if (force_func != (force_creator_t) calc_tongue_force) {
                         continue;
                     }
                     list_t *bodies = force_get_bodies(force);
                     body_t *body1 = (body_t *) list_get(bodies, 0);
                     body_t *body2 = (body_t *) list_get(bodies, 1);
-                    if((body1 == player && body2 == target) || (body1 == target && body2 == player)){
+                    if ((body1 == player && body2 == target) || (body1 == target && body2 == player)) {
                         list_remove(forces, i);
                     }
                 }
@@ -633,42 +628,70 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     }
 }
 
-int main(int argc, char *argv[]) {
-    size_t current_level = 3;
-    scene_t *scene = set_up_level(current_level);
-    list_t *textboxes;
+// Shows a brief loading screen for the game
+list_t *run_loading_screen() {
+    scene_t *start_scene = scene_init();
+    sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y});
+    list_t *textboxes = default_tbs();
 
+    char *background_name = malloc(40);
+    sprintf(background_name, "images/tarzan-ball-background.png");
+    scene_set_background(start_scene, background_name, (vector_t) {MAX_X - MIN_X, MAX_Y - MIN_Y});
+
+    int count = 0;
+    double width = (MAX_X - MIN_X) / LOADING_SCREEN_NUM_RECTANGLES;
+    while (!sdl_is_done(start_scene) && count < LOADING_SCREEN_NUM_RECTANGLES) {
+        char *c = malloc(1);
+        *c = 'Q';
+       
+        rect_gen(start_scene, LOADING_SCREEN_RECTANGLE_HEIGHT, width, INFINITY,
+                    (vector_t) {width / 2 + count * width, 0}, TONGUE_COLOR, c, 0, NULL);
+        scene_tick(start_scene, time_since_last_tick());
+        sdl_render_scene(start_scene, textboxes);
+        count++;
+    }
+
+    scene_free(start_scene);
+    sdl_free();
+    return textboxes;
+}
+
+int main(int argc, char *argv[]) {
+    list_t *textboxes = run_loading_screen();
+
+    size_t current_level = 1;
     bool died = false;
-    //int count = 0;
+    scene_t *scene = set_up_level(current_level);
 
     while (!sdl_is_done(scene)) {
         sdl_on_key((key_handler_t) on_key);
         
-        // if first level, then display tutorial text
-        if (current_level == 1 && !died) {
-            textboxes = make_tutorial();
-        }
-        else if (scene_show_text_image(scene)) {
+        // Different cases for Text Display
+        if (scene_show_text_image(scene)) {
             textboxes = make_loss_level();
+        }
+        else if (current_level == 1) {
+            textboxes = make_tutorial();
         }
         else {
             textboxes = default_tbs();
         }
 
-        // reset button, restarts the level, red square
-        if (find_body_in_scene(scene, 'R', scene_bodies(scene)) == -1) {
+        // Level Restart Condition: 'r' is clicked while the menu is pulled up
+        body_t *menu_button = scene_get_body(scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
+        if (body_get_elasticity(menu_button) == 2) {
+            body_set_elasticity(menu_button, 1);
             player_added = false;
             scene_free(scene);
             sdl_free();
             scene = set_up_level(current_level);
         }
 
-        // win condition
-        // if the target disappears, as there is half dest between player and target
-        if (find_body_in_scene(scene, 'E', scene_bodies(scene)) == -1){
+        // Win Condition: target is no longer there
+        if (find_body_in_scene(scene, 'E', scene_bodies(scene)) == -1) {
             current_level++;
-            if(current_level > 4){
-                // Need a win screen here. Maybe a celebration picture of Tarzan
+            if (current_level > 4) {
+                // Need win sceen
                 break;
             }
             player_added = false;
@@ -677,15 +700,13 @@ int main(int argc, char *argv[]) {
             scene = set_up_level(current_level);
         }
 
-        // loss condition, player is no longer there
+        // Loss Condition: player is no longer there
         if (find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1) {
             died = true;
             player_added = false;
-            
             scene_free(scene);
             sdl_free();
             scene = set_up_level(current_level);
-
             scene_set_show_text_image(scene, true);
         }
 

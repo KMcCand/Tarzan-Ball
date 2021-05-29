@@ -1,5 +1,5 @@
 # List of demo programs
-DEMOS = tongue_text_test level
+DEMOS = tarzan-ball level
 # List of C files in "libraries" that we provide
 STAFF_LIBS = test_util sdl_wrapper
 # List of C files in "libraries" that you will write.
@@ -96,7 +96,7 @@ bin/level: out/level.o out/sdl_wrapper.o $(STUDENT_OBJS)
 bin/level_viewer: out/level_viewer.o out/sdl_wrapper.o $(STUDENT_OBJS)
 		$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
-bin/tongue_text_test: out/tongue_text_test.o out/sdl_wrapper.o $(STUDENT_OBJS)
+bin/tarzan-ball: out/tarzan-ball.o out/sdl_wrapper.o $(STUDENT_OBJS)
 		$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 # Builds the test suite executables from the corresponding test .o file
