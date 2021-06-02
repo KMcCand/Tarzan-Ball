@@ -21,9 +21,7 @@ typedef struct scene {
     size_t size;
     bool has_background;
     image_t *background;
-    image_t *text_image;
-    bool has_text_image;
-    bool show_text_image;
+    list_t *text_images;
 } scene_t;
 
 force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_func_t freer) {
@@ -62,8 +60,7 @@ scene_t *scene_init(void) {
     assert(scene != NULL);
     scene->background = NULL;
     scene->has_background = false;
-    scene->text_image = NULL;
-    scene->show_text_image = false;
+    scene->text_images = list_init(3, (free_func_t) image_free);
     return scene;
 }
 
@@ -73,9 +70,7 @@ void scene_free(scene_t *scene) {
     if (scene->has_background) {
         image_free(scene->background);
     }
-    if (scene->has_text_image) {
-        image_free(scene->text_image);
-    }
+    list_free(scene->text_images);
     free(scene);
 }
 
@@ -106,22 +101,22 @@ image_t *scene_get_background(scene_t *scene) {
     return scene->background;
 }
 
-void scene_set_text_image(scene_t *scene, char *name, vector_t dimensions) {
-    scene->has_text_image = true;
-    scene->text_image = image_init(name, dimensions, 0);
+void scene_add_text_image(scene_t *scene, char *name, vector_t dimensions) {
+    image_t *new_image = image_init(name, dimensions, 0);
+    image_set_show(new_image, false);
+    list_add(scene->text_images, new_image);
 }
 
-image_t *scene_get_text_image(scene_t *scene) {
-    assert(scene->text_image != NULL && "The scene does not have a text image!");
-    return scene->text_image;
+list_t *scene_get_text_images(scene_t *scene) {
+    return scene->text_images;
 }
 
-void scene_set_show_text_image(scene_t *scene, bool new_value) {
-    scene->show_text_image = new_value;
+void scene_set_show_text_image(scene_t *scene, size_t index, bool new_value) {
+    image_set_show(list_get(scene->text_images, index), new_value);
 }
 
-bool scene_show_text_image(scene_t *scene) {
-    return scene->show_text_image;
+bool scene_show_text_image(scene_t *scene, size_t index) {
+    return image_get_show(list_get(scene->text_images, index));
 }
 
 void scene_remove_body_extra(scene_t *scene, size_t index){

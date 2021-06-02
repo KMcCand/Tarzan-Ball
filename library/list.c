@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <execinfo.h>
 
 int GROWTH_FACTOR = 2;
 

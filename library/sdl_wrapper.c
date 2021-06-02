@@ -118,6 +118,7 @@ void sdl_init(vector_t min, vector_t max) {
     center = vec_multiply(0.5, vec_add(min, max));
     max_diff = vec_subtract(max, center);
     SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
     TTF_Init();
     IMG_Init(IMG_INIT_PNG);
 
@@ -288,17 +289,20 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
         }
     }
 
-    // Render the text image popup
-    if (scene_show_text_image(scene)) {
-        SDL_Texture *text_image_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(scene_get_text_image(scene)));
-        assert(text_image_texture != NULL && "Scene text_image texture is null!");
-        vector_t dimensions = image_get_dimensions(scene_get_text_image(scene));
-        boundary->x = (min_pixel.x + max_pixel.x - dimensions.x) / 2;
-        boundary->y = (max_pixel.y + min_pixel.y - dimensions.y) / 2;
-        boundary->w = dimensions.x;
-        boundary->h = dimensions.y;
-        SDL_RenderCopyEx(renderer, text_image_texture, NULL, boundary, 0, NULL, SDL_FLIP_NONE);
-        SDL_DestroyTexture(text_image_texture);
+    // Render all text image popups
+    list_t *text_images = scene_get_text_images(scene);
+    for (size_t i = 0; i < list_size(text_images); i++) {
+        if (scene_show_text_image(scene, i)) {
+            SDL_Texture *text_image_texture = SDL_CreateTextureFromSurface(renderer, image_get_surface(list_get(text_images, i)));
+            assert(text_image_texture != NULL && "Scene text_image texture is null!");
+            vector_t dimensions = image_get_dimensions(list_get(text_images, i));
+            boundary->x = (min_pixel.x + max_pixel.x - dimensions.x) / 2;
+            boundary->y = (max_pixel.y + min_pixel.y - dimensions.y) / 2;
+            boundary->w = dimensions.x;
+            boundary->h = dimensions.y;
+            SDL_RenderCopyEx(renderer, text_image_texture, NULL, boundary, 0, NULL, SDL_FLIP_NONE);
+            SDL_DestroyTexture(text_image_texture);
+        }
     }
     
     // Render all text
