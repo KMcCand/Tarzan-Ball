@@ -406,7 +406,7 @@ void rect_draw(scene_t *scene, char *line){
         *c = 'W';
         sprintf(image, "images/floor.png");
     }
-    else{
+    else {
         *c = 'K';
         sprintf(image, "images/lava.png");
     }
@@ -572,6 +572,7 @@ list_t *make_menu_text() {
     textbox_t *one = textbox_init(300, 150, 400, 80, "Menu", 
                 TTF_OpenFont("fonts/Skranji-Regular.ttf", 160), (SDL_Color) {0, 200, 0});
     list_add(ret, one);
+    list_add(ret, make_menu_button());
     textbox_t *three = textbox_init(310, 240, 380, 25, "Press \'r\' to go to replay level", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
     list_add(ret, three);
@@ -605,6 +606,7 @@ list_t *make_loss_text() {
     list_add(ret, one);
     textbox_t *three = textbox_init(310, 240, 380, 25, "Press \'r\' to go to replay level", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
+    list_add(ret, make_menu_button());
     list_add(ret, three);
     textbox_t *four = textbox_init(400, 300, 200, 25, "Press \'q\' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
@@ -613,7 +615,6 @@ list_t *make_loss_text() {
 }
 
 void on_key(char key, key_event_type_t type, double held_time, void *scene, vector_t loc) {
-    printf("\n\n\nhey babes\n\n\n");
     loc = (vector_t) {loc.x, MAX_Y - loc.y};
     body_t *cursor_out = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'C', scene_bodies(scene)));
     body_t *cursor_dot = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'I', scene_bodies(scene)));
@@ -623,9 +624,10 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     
     
     if (type == KEY_PRESSED) {
+        printf("\nin the big if");
         switch (key) {
             case MOUSE_CLICK: {
-                printf("\n\n\nbefore the if\n\n\n");
+                printf("\nin the small if");
                 if (! scene_show_text_image(scene, 0)) {
                     // If the user clicks on the menu button, display the menu image
                     if (find_collision(body_get_shape(cursor_dot), body_get_shape(menu_button)).collided) {
