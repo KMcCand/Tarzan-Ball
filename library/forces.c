@@ -182,9 +182,9 @@ void create_drag(scene_t *scene, double gamma, body_t *body) {
     scene_add_bodies_force_creator(scene, (force_creator_t) calc_drag_force, aux_info, bodies, (free_func_t) aux_free);
 }
 
-void create_destructive_collision(scene_t *scene, body_t *body1, body_t *body2){
+void create_destructive_collision(scene_t *scene, body_t *body1, body_t *body2) {
     aux_t *aux_info = aux_init(0, body1, body2);
-    aux_set_aux_info(aux_info, malloc(sizeof(char))); // this probs causes mem leaks
+    aux_set_aux_info(aux_info, malloc(sizeof(char)));
     aux_set_collision(aux_info, (collision_handler_t) destructive_collision);
     list_t *bodies = list_init(2, (free_func_t) body_free);
     list_add(bodies, body1);
@@ -192,7 +192,7 @@ void create_destructive_collision(scene_t *scene, body_t *body1, body_t *body2){
     scene_add_bodies_force_creator(scene, (force_creator_t) calc_collision, aux_info, bodies, (free_func_t) aux_free);
 }
 
-void create_half_destruction(scene_t *scene, body_t *body1, body_t *body2){
+void create_half_destruction(scene_t *scene, body_t *body1, body_t *body2) {
     aux_t *aux_info = aux_init(0, body1, body2);
     aux_set_aux_info(aux_info, malloc(sizeof(char)));
     aux_set_collision(aux_info, (collision_handler_t) half_destructive_collision);

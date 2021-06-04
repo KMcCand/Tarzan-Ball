@@ -22,6 +22,7 @@ typedef struct scene {
     bool has_background;
     image_t *background;
     list_t *text_images;
+    bool pause;
 } scene_t;
 
 force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_func_t freer) {
@@ -61,6 +62,7 @@ scene_t *scene_init(void) {
     scene->background = NULL;
     scene->has_background = false;
     scene->text_images = list_init(3, (free_func_t) image_free);
+    scene->pause = false;
     return scene;
 }
 
@@ -133,6 +135,10 @@ void scene_add_force_creator(scene_t *scene, force_creator_t forcer, void *aux, 
     list_add(scene->forces, force);
 }
 
+void scene_set_pause(scene_t *scene, bool value) {
+    scene->pause = value;
+}
+
 void scene_add_bodies_force_creator(
     scene_t *scene,
     force_creator_t forcer,
@@ -148,39 +154,49 @@ list_t *scene_get_forces(scene_t *scene){
     return scene->forces;
 }
 
-void scene_tick(scene_t *scene, double dt){
-    list_t *forces = scene->forces;
+void scene_tick(scene_t *scene, double dt) {
+    if (! scene->pause) { 
+        list_t *forces = scene->forces;
 
-    //tick non collisions
-    // for(size_t i = 0; i < list_size(forces); i++){
-    //     force_t *force = list_get(forces, i);
-    //     aux_t *aux = force->aux;
-    
-    // }
+        //tick non collisions
+        // for(size_t i = 0; i < list_size(forces); i++){
+        //     force_t *force = list_get(forces, i);
+        //     aux_t *aux = force->aux;
+        
+        // }
 
-    for (size_t i = 0; i < list_size(forces); i++) {
-        force_t *force = list_get(forces, i);
-        aux_t *aux = force->aux;
-        force->forcer(aux);
-    }
+        for (size_t i = 0; i < list_size(forces); i++) {
+            force_t *force = list_get(forces, i);
+            aux_t *aux = force->aux;
+            force->forcer(aux);
+        }
 
-    for (size_t i = 0; i < list_size(forces); i++) {
-        force_t *force = list_get(forces, i);
-        for(size_t j = 0; j < list_size(force->bodies); j++){
-            if(body_is_removed(list_get(force->bodies, j))){
-                force_t *removed = list_remove(scene->forces, i);
+        for (size_t i = 0; i < list_size(forces); i++) {
+            force_t *force = list_get(forces, i);
+            for(size_t j = 0; j < list_size(force->bodies); j++){
+                if(body_is_removed(list_get(force->bodies, j))){
+                    force_t *removed = list_remove(scene->forces, i);
+                    i--;
+                    force_free(removed);
+                    break;
+                }
+            }
+        }
+        
+        for(size_t i = 0; i < scene->size; i++){
+            body_tick(list_get(scene->bodies, i), dt);
+            if(body_is_removed(list_get(scene->bodies, i))){
+                scene_remove_body_extra(scene, i);
                 i--;
-                force_free(removed);
-                break;
             }
         }
     }
-    
-    for(size_t i = 0; i < scene->size; i++){
-        body_tick(list_get(scene->bodies, i), dt);
-        if(body_is_removed(list_get(scene->bodies, i))){
-            scene_remove_body_extra(scene, i);
-            i--;
+    else {
+        for(size_t i = 0; i < scene->size; i++) {
+            body_t *current_body = list_get(scene->bodies, i);
+            if (((char *) body_get_info(current_body))[0] == 'C' || ((char *) body_get_info(current_body))[0] == 'I') {
+                body_tick(current_body, dt);
+            }
         }
-    }
+    }   
 }

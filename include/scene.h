@@ -124,6 +124,11 @@ bool scene_show_text_image(scene_t *scene, size_t index);
 void scene_remove_body(scene_t *scene, size_t index);
 
 /**
+ * Sets whether or not a scene is paused to value.
+ */ 
+void scene_set_pause(scene_t *scene, bool value);
+
+/**
  * @deprecated Use scene_add_bodies_force_creator() instead
  * so the scene knows which bodies the force creator depends on
  */

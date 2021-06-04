@@ -269,6 +269,7 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
         char body_info = ((char *) body_get_info(body))[0];
 
         if (body_info != 'C' && body_info != 'I') {
+            // body_get_shape returns a copy of shape, so we can free this copy
             list_t *shape = body_get_shape(body);
             sdl_draw_polygon(shape, body_get_color(body));
             list_free(shape);
@@ -313,6 +314,7 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
         body_t *body = scene_get_body(scene, i);
         char *body_info = (char *) body_get_info(body);
         if (((char *) body_info)[0] == 'C' || ((char *) body_info)[0] == 'I') {
+            // body_get_shape returns a copy of shape, so we can free this copy
             list_t *shape = body_get_shape(body);
             sdl_draw_polygon(shape, body_get_color(body));
             list_free(shape);

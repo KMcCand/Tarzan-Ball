@@ -69,8 +69,8 @@ const double MAX_X = 1000.0;
 const double MAX_Y = 500.0;
 
 // Level Progression
-const size_t STARTING_LEVEL = 4;
-const size_t NUM_LEVELS = 4;
+const size_t STARTING_LEVEL = 1;
+const size_t NUM_LEVELS = 1;
 
 // Globals
 list_t *INTERACTABLES;
@@ -79,9 +79,6 @@ bool clicked = false;
 
 /**
  * TODO:
- * KYLE:
- * - Add 'P' pause un-pause functionality
- * - Why list_free(shape) in sdl_wrapper? how does this not have an error wtf
  * JULIAN:
  * - Global Variables
  * - Level Generator bugs
@@ -599,19 +596,25 @@ list_t *make_tutorial(){
                                       TTF_OpenFont("fonts/karvwood.otf", 200), (SDL_Color) {255, 0, 255});
     list_add(ret, one);
     list_add(ret, make_menu_button());
+    textbox_t *five = textbox_init(375, 150, 250, 45, "Press \'p\' to pause", 
+                TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {255, 0, 255});
+    list_add(ret, five);
     return ret;
 }
 
 list_t *make_menu_text() {
     list_t *ret = list_init(2, (free_func_t) textbox_free);
-    textbox_t *one = textbox_init(300, 150, 400, 100, "Menu", 
+    textbox_t *one = textbox_init(300, 120, 400, 100, "Menu", 
                 TTF_OpenFont("fonts/karvwood.otf", 160), (SDL_Color) {0, 200, 0});
     list_add(ret, one);
     list_add(ret, make_menu_button());
-    textbox_t *three = textbox_init(310, 250, 380, 25, "Press \'r\' to go to restart level", 
+    textbox_t *five = textbox_init(400, 220, 200, 25, "Press \'p\' to play", 
+                TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
+    list_add(ret, five);
+    textbox_t *three = textbox_init(310, 265, 380, 25, "Press \'r\' to go to restart level", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
     list_add(ret, three);
-    textbox_t *four = textbox_init(400, 295, 200, 25, "Press \'q\' to quit", 
+    textbox_t *four = textbox_init(400, 310, 200, 25, "Press \'q\' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
     list_add(ret, four);
     return ret;
@@ -631,7 +634,7 @@ list_t *make_win_text() {
     textbox_t *three = textbox_init(400, 400, 200, 30, "Press 'q' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {112, 39, 195});
     list_add(ret, three);
-    textbox_t *five = textbox_init(200, 440, 600, 25, "Game developers: Julian Peres, Kyle McCandless, Daniel Wen, Ishaan Kannan", 
+    textbox_t *five = textbox_init(50, 440, 900, 25, "Game developers: Julian \"Takis\" Peres, Kyle \"Cookies\" McCandless, Daniel \"Hops\" Wen, Ishaan \"Simp\" Kannan", 
                 TTF_OpenFont("fonts/Skranji-Regular.ttf", 120), (SDL_Color) {0, 160, 0});
     list_add(ret, five);
     textbox_t *six = textbox_init(325, 470, 350, 25, "...and Sarah for helping us along the way :)", 
@@ -678,6 +681,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 if (! scene_show_text_image(scene, 0)) {
                     // If the user clicks on the menu button, display the menu image
                     if (find_collision(body_get_shape(cursor_dot), body_get_shape(menu_button)).collided) {
+                        scene_set_pause(scene, true);
                         scene_set_show_text_image(scene, 0, true);
                         break;
                     }
@@ -709,6 +713,19 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                         body_set_elasticity(scene_get_body(scene, find_body_in_scene(scene, 'R', scene_bodies(scene))), 2);
                         scene_set_show_text_image(scene, i, false);
                         break;
+                    }
+                }
+                break;
+            }
+            case P_KEY: {
+                if (! scene_show_text_image(scene, 1) && ! scene_show_text_image(scene, 2)) {
+                    if (scene_show_text_image(scene, 0)) {
+                        scene_set_show_text_image(scene, 0, false);
+                        scene_set_pause(scene, false);
+                    }
+                    else {
+                        scene_set_show_text_image(scene, 0, true);
+                        scene_set_pause(scene, true);
                     }
                 }
                 break;
