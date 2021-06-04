@@ -222,8 +222,8 @@ void sdl_draw_polygon(list_t *points, rgb_color_t color) {
  * Renders the image for a body, if there is one.
  */ 
 void render_body_image(body_t *body) {
-    if (body_has_image(body)) {
-        image_t *body_image = body_get_image(body);
+    if (body_has_image_list(body)) {
+        image_t *body_image = body_get_current_image(body);
         vector_t centroid = body_get_centroid(body);
         vector_t image_dimensions = image_get_dimensions(body_image);
 
@@ -266,14 +266,14 @@ void sdl_show(scene_t *scene, list_t *textboxes) {
     // Render all bodies and their images on top of them except for the cursor and the player image
     for (size_t i = 0; i < scene_bodies(scene); i++) {
         body_t *body = scene_get_body(scene, i);
-        char *body_info = (char *) body_get_info(body);
+        char body_info = ((char *) body_get_info(body))[0];
 
-        if (((char *) body_info)[0] != 'C' && ((char *) body_info)[0] != 'I') {
+        if (body_info != 'C' && body_info != 'I') {
             list_t *shape = body_get_shape(body);
             sdl_draw_polygon(shape, body_get_color(body));
             list_free(shape);
             
-            if (((char *) body_info)[0] != 'P') {
+            if (body_info != 'P' && body_info != 'E') {
                 render_body_image(body);
             }
         }

@@ -15,12 +15,15 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-// Tarzan Circle Generating
+// Tarzan
 const double BALL_POINTS = 16;
 const double BALL_RADIUS = 20;
 const double BALL_MASS = 50.0;
 const vector_t BALL_START = (vector_t) {100.0, 350.0};
 const double BALL_ELASTICITY = .5;
+const vector_t TARZAN_BODY_IMAGE_DIM = (vector_t) {60, 60};
+const size_t TARZAN_NUM_NON_BLINKING_FRAMES = 120;
+const size_t TARZAN_NUM_BLINKING_FRAMES = 4;
 
 // Tongue Generating
 const double TONGUE_SPEED = 1500;
@@ -66,8 +69,8 @@ const double MAX_X = 1000.0;
 const double MAX_Y = 500.0;
 
 // Level Progression
-const size_t STARTING_LEVEL = 1;
-const size_t NUM_LEVELS = 5;
+const size_t STARTING_LEVEL = 4;
+const size_t NUM_LEVELS = 4;
 
 // Globals
 list_t *INTERACTABLES;
@@ -76,16 +79,13 @@ bool clicked = false;
 
 /**
  * TODO:
- * DANIEL:
- * - Change win screen pictƒure and text
  * KYLE:
  * - Add 'P' pause un-pause functionality
- * - Don't need body image, just need image_list and move the incrementing to sdl_wrapper
- * - Make new level
- * - Optimize on_key
+ * - Why list_free(shape) in sdl_wrapper? how does this not have an error wtf
  * JULIAN:
  * - Global Variables
  * - Level Generator bugs
+ * - Is there a way to make the tongue not stick to lava?
  */ 
 
 /**
@@ -147,7 +147,7 @@ void draw_cursor_dot(scene_t *scene, vector_t center) {
     scene_add_body(scene, body_init_with_info(dot_points, CURSOR_MASS, PURPLE_COLOR, c, (free_func_t) free));
 }
 
-body_t *rect_gen(scene_t *scene, double width, double height, double mass, vector_t center, rgb_color_t color, char *c, double rotation, char *image_name){
+body_t *rect_gen(scene_t *scene, double width, double height, double mass, vector_t center, rgb_color_t color, char *c, double rotation, list_t *image_list){
     list_t *rect_pts = list_init(4, (free_func_t) vec_free);
 
     vector_t *v = malloc(sizeof(*v));
@@ -165,8 +165,8 @@ body_t *rect_gen(scene_t *scene, double width, double height, double mass, vecto
 
     polygon_rotate(rect_pts, rotation, center);
     body_t *bod = body_init_with_info(rect_pts, mass, color, c, free);
-    if (image_name != NULL) {
-        body_add_image(bod, image_init(image_name, (vector_t) {width, height}, -rotation * 180 / M_PI));
+    if (image_list != NULL) {
+        body_add_image_list(bod, image_list);
     }
     scene_add_body(scene, bod);
     return bod;
@@ -251,26 +251,25 @@ void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     rect_gen(scene, TONGUE_WIDTH, distance, INFINITY, center, PURPLE_COLOR, c, angle, NULL);    
 }
 
-body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, bool add, list_t *image_names, vector_t image_dimensions){
+body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, bool add, list_t *image_list) {
     list_t *ball_points = list_init(points, (free_func_t) vec_free);
     for (size_t i = 0; i < points; i++) {
         double angle = 2 * M_PI * i / points; 
         vector_t *v = malloc(sizeof(*v));
-        *v = (vector_t) {start.x + radius * cos(angle), 
-                         start.y + radius * sin(angle)};
+        *v = (vector_t) {start.x + radius * cos(angle), start.y + radius * sin(angle)};
         list_add(ball_points, v);
     }
     polygon_rotate(ball_points, M_PI / points, start);
     body_t *ball_bod = body_init_with_info(ball_points, mass, color, c, (free_func_t) free);
-    if (image_names != NULL) {
-        body_add_image(ball_bod, image_init(list_get(image_names, 0), image_dimensions, 0.0));
-        list_t *images = list_init(list_size(image_names), (free_func_t) image_free);
-        for(int i = 0; i < list_size(image_names); i++){
-            list_add(images, image_init(list_get(image_names, i), image_dimensions, 0.0));
-        }
-        body_add_image_list(ball_bod, images);
+    if (image_list != NULL) {
+        // body_add_image(ball_bod, image_init(list_get(image_names, 0), image_dimensions, 0.0));
+        // list_t *images = list_init(list_size(image_names), (free_func_t) image_free);
+        // for(int i = 0; i < list_size(image_names); i++){
+        //     list_add(images, image_init(list_get(image_names, i), image_dimensions, 0.0));
+        // }
+        body_add_image_list(ball_bod, image_list);
     }
-    if (add){
+    if (add) {
         scene_add_body(scene, ball_bod);
     }
     return ball_bod;
@@ -285,7 +284,7 @@ void freeze_tongue_end(body_t *tongue, body_t *wall, vector_t axis, void *aux) {
     char *c = malloc(1);
     *c = 'T';
     vector_t center = body_get_centroid(tongue);
-    body_t *new_tongue = circle_gen(scene, 10, center, TONGUE_WIDTH / 2, INFINITY, PURPLE_COLOR, c, false, NULL, VEC_ZERO);
+    body_t *new_tongue = circle_gen(scene, 10, center, TONGUE_WIDTH / 2, INFINITY, PURPLE_COLOR, c, false, NULL);
     body_t *player = scene_get_body(scene, index_player);
 
     body_t *goal = scene_get_body(scene, index_goal);
@@ -358,6 +357,26 @@ void tongue_removal(scene_t *scene){
     }
 }
 
+// Adds all of the frames required for Tarzan to blink to image_list in order
+void add_tarzan_frames(list_t *image_list) {
+    char *image_name = malloc(30);
+    for (size_t i = 0; i < TARZAN_NUM_NON_BLINKING_FRAMES; i++) {
+        image_name = malloc(30);
+        sprintf(image_name, "images/tarzan-ball.png");
+        list_add(image_list, image_init(image_name, TARZAN_BODY_IMAGE_DIM, 0));
+    }
+
+    for (size_t i = 1; i <= TARZAN_NUM_BLINKING_FRAMES; i++) {
+        image_name = malloc(30);
+        sprintf(image_name, "images/tarzan-blink-%zu.png", i);
+        list_add(image_list, image_init(image_name, TARZAN_BODY_IMAGE_DIM, 0));    
+    }
+
+    image_name = malloc(30);
+    sprintf(image_name, "images/tarzan-blink-1.png");
+    list_add(image_list, image_init(image_name, TARZAN_BODY_IMAGE_DIM, 0));
+}
+
 void circ_draw(scene_t *scene, char *line){
     list_t *list = list_init(10, free);
     char *ptr = malloc(200);
@@ -371,30 +390,23 @@ void circ_draw(scene_t *scene, char *line){
     }
 
     char *c = malloc(1);
-    list_t *image_name_list = list_init(2, free);
-    vector_t dimensions;
+    list_t *image_list = list_init(2, (free_func_t) image_free);
     if (strtod(list_get(list, 8), &holder) == 0) {
         *c = 'P';
-        char *image_name1 = malloc(20);
-        image_name1 = "images/tarzan-ball.png";
-        char *image_name2 = malloc(20);
-        image_name2 = "images/tarzan-eyes.png";
-        list_add(image_name_list, image_name1);
-        list_add(image_name_list, image_name2);
-        dimensions = (vector_t) {60, 60};
+        add_tarzan_frames(image_list);
     }
     else {
         *c = 'E';
         char *image_name = malloc(20);
         image_name = "images/target-image.png";
-        list_add(image_name_list, image_name);
-        dimensions = (vector_t) {40, 40};
+        image_t *image = image_init(image_name, (vector_t) {40, 40}, 0);
+        list_add(image_list, image);
     }
 
     body_t *body = circle_gen(scene, strtod(list_get(list, 0), &holder), (vector_t) {strtod(list_get(list, 1),
             &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
-            strtod(list_get(list, 7), &holder)}, c, true, image_name_list, dimensions);
+            strtod(list_get(list, 7), &holder)}, c, true, image_list);
     if (player_added) {
         list_add(INTERACTABLES, body);
     }
@@ -416,21 +428,25 @@ void rect_draw(scene_t *scene, char *line){
 		ptr = strtok(NULL, delim);
 	}
 
-    char *image = malloc(20);
+    char *image_name = malloc(20);
     char *c = malloc(1);
-    if(strtod(list_get(list, 8), &holder) == 0) {
+    if (strtod(list_get(list, 8), &holder) == 0) {
         *c = 'W';
-        sprintf(image, "images/floor.png");
+        sprintf(image_name, "images/floor.png");
     }
     else {
         *c = 'K';
-        sprintf(image, "images/lava.png");
+        sprintf(image_name, "images/lava.png");
     }
 
+    list_t *image_list = list_init(1, (free_func_t) image_free);
+    list_add(image_list, image_init(image_name, (vector_t) {strtod(list_get(list, 0), &holder),
+            strtod(list_get(list, 1), &holder)}, strtod(list_get(list, 9), &holder) * -180 / M_PI));
+    
     body_t *body = rect_gen(scene, strtod(list_get(list, 0), &holder), strtod(list_get(list, 1), &holder),
             strtod(list_get(list, 2), &holder), (vector_t) {strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder)}, (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
-            strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image);
+            strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image_list);
     list_add(INTERACTABLES, body);
 
     if(*c == 'K'){
@@ -483,7 +499,7 @@ void set_background_and_text_images(scene_t *scene) {
     scene_add_text_image(scene, menu_name, (vector_t) {700, 500});
 
     char *win_name = malloc(40);
-    sprintf(win_name, "images/tarzan-ball-background.png");
+    sprintf(win_name, "images/win-image.png");
     scene_add_text_image(scene, win_name, (vector_t) {MAX_X - MIN_X, MAX_Y - MIN_Y});
 
     char *loss_name = malloc(30);
@@ -531,7 +547,10 @@ void generate_menu_button_body(scene_t *scene) {
     char *c = malloc(1);
     *c = 'R';
     body_t *menu_button = body_init_with_info(rounded_rec_pts, INFINITY, PURPLE_COLOR, c, free);
-    body_add_image(menu_button, image_init("images/button.png", (vector_t) {2 * width + 2, 2 * height + 2}, 0));
+
+    list_t *image_list = list_init(1, (free_func_t) image_free);
+    list_add(image_list, image_init("images/button.png", (vector_t) {2 * width + 2, 2 * height + 2}, 0));
+    body_add_image_list(menu_button, image_list);
     scene_add_body(scene, menu_button);
 }
 
@@ -600,18 +619,24 @@ list_t *make_menu_text() {
 
 list_t *make_win_text() {
     list_t *ret = list_init(2, (free_func_t) textbox_free);
-    textbox_t *one = textbox_init(100, 50, 800, 60, "CONGRATULATIONS.", 
-                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {0, 200, 0});
+    textbox_t *one = textbox_init(100, 25, 800, 60, "CONGRATULATIONS.", 
+                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {112, 39, 195});
     list_add(ret, one);
-    textbox_t *four = textbox_init(375, 110, 250, 60, "YOU WIN!", 
-                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {0, 200, 0});
+    textbox_t *four = textbox_init(375, 80, 250, 60, "YOU WIN!", 
+                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {0, 175, 0});
     list_add(ret, four);
-    textbox_t *two = textbox_init(300, 350, 400, 30, "Press \'r\' to go again", 
-                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 200, 0});
+    textbox_t *two = textbox_init(300, 350, 400, 30, "Press 'r' to restart game",
+                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {112, 39, 195});
     list_add(ret, two);
-    textbox_t *three = textbox_init(400, 400, 200, 30, "Press \'q\' to quit", 
-                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 200, 0});
+    textbox_t *three = textbox_init(400, 400, 200, 30, "Press 'q' to quit", 
+                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {112, 39, 195});
     list_add(ret, three);
+    textbox_t *five = textbox_init(200, 440, 600, 25, "Game developers: Julian Peres, Kyle McCandless, Daniel Wen, Ishaan Kannan", 
+                TTF_OpenFont("fonts/Skranji-Regular.ttf", 120), (SDL_Color) {0, 160, 0});
+    list_add(ret, five);
+    textbox_t *six = textbox_init(325, 470, 350, 25, "...and Sarah for helping us along the way :)", 
+                TTF_OpenFont("fonts/Skranji-Regular.ttf", 120), (SDL_Color) {0, 160, 0});
+    list_add(ret, six);
     return ret;
 }
 
@@ -631,18 +656,21 @@ list_t *make_loss_text() {
 }
 
 void on_key(char key, key_event_type_t type, double held_time, void *scene, vector_t loc) {
-    if (find_body_in_scene(scene, 'C', scene_bodies(scene)) == -1 || find_body_in_scene(scene, 'I', scene_bodies(scene)) == -1
-                || find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1 || find_body_in_scene(scene, 'R', scene_bodies(scene)) == -1
-                || find_body_in_scene(scene, 'E', scene_bodies(scene)) == -1) {    
+    double cursor_out_index = find_body_in_scene(scene, 'C', scene_bodies(scene));
+    double cursor_dot_index = find_body_in_scene(scene, 'I', scene_bodies(scene));
+    double player_index = find_body_in_scene(scene, 'P', scene_bodies(scene));
+    double menu_button_index = find_body_in_scene(scene, 'R', scene_bodies(scene));
+    double target_index = find_body_in_scene(scene, 'E', scene_bodies(scene));
+    if (cursor_out_index == -1 || cursor_dot_index == -1 || player_index == -1 || menu_button_index == -1 || target_index == -1) {    
         return;
     }
+
     loc = (vector_t) {loc.x, MAX_Y - loc.y};
-    body_t *cursor_out = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'C', scene_bodies(scene)));
-    body_t *cursor_dot = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'I', scene_bodies(scene)));
-    body_t *player = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'P', scene_bodies(scene)));
-    body_t *menu_button = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
-    body_t *target = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'E', scene_bodies(scene)));
-    
+    body_t *cursor_out = scene_get_body((scene_t *) scene, cursor_out_index);
+    body_t *cursor_dot = scene_get_body((scene_t *) scene, cursor_dot_index);
+    body_t *player = scene_get_body((scene_t *) scene, player_index);
+    body_t *menu_button = scene_get_body((scene_t *) scene, menu_button_index);
+    body_t *target = scene_get_body((scene_t *) scene, target_index);
     
     if (type == KEY_PRESSED) {
         switch (key) {
@@ -656,7 +684,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
 
                     char *c = malloc(1);
                     *c = 'T';
-                    body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, PURPLE_COLOR, c, true, NULL, VEC_ZERO);
+                    body_t *tongue_end = circle_gen(scene, 3, body_get_centroid(player), 3, INFINITY, PURPLE_COLOR, c, true, NULL);
                     vector_t direction = tongue_direction(player, cursor_dot);
                     body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
                     create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
@@ -744,7 +772,7 @@ void run_loading_screen() {
         *c = 'Q';
        
         rect_gen(start_scene, LOADING_SCREEN_RECTANGLE_HEIGHT, width, INFINITY,
-                    (vector_t) {width / 2 + count * width, 0}, PURPLE_COLOR, c, 0, NULL);
+                (vector_t) {width / 2 + count * width, 0}, PURPLE_COLOR, c, 0, NULL);
         scene_tick(start_scene, time_since_last_tick());
         sdl_render_scene(start_scene, textboxes);
         count++;

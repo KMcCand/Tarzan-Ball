@@ -9,7 +9,7 @@
 #include <stdbool.h>
 
 const size_t INITIAL_COLLIDING_BODIES_LENGTH = 3;
-const size_t IMG_CHANGE = 10;
+const double IMG_CHANGE_TIME = 0.03;
 
 typedef struct body {
     list_t *points;
@@ -27,9 +27,8 @@ typedef struct body {
     bool removed;
     list_t *image_list;
     bool has_image_list;
-    image_t *image;
-    bool has_image;
-    size_t image_change;
+    double image_change_count;
+    size_t image_list_index;
 } body_t;
 
 body_t *body_init(list_t *shape, double mass, rgb_color_t color) {
@@ -52,9 +51,8 @@ body_t *body_init(list_t *shape, double mass, rgb_color_t color) {
     body->removed = false;
     body->image_list = NULL;
     body->has_image_list = false;
-    body->image = NULL;
-    body->has_image = false;
-    body->image_change = 0;
+    body->image_change_count = 0;
+    body->image_list_index = 0;
     return body;
 }
 
@@ -85,9 +83,8 @@ body_t *body_init_with_info(
     body->removed = false;
     body->image_list = NULL;
     body->has_image_list = false;
-    body->image = NULL;
-    body->has_image = false;
-    body->image_change = 0;
+    body->image_change_count = 0;
+    body->image_list_index = 0;
     return body;
 }
 
@@ -102,24 +99,19 @@ void body_free(body_t *body){
     free(body);
 }
 
-void body_add_image(body_t *body, image_t *image) {
-    body->image = image;
-    body->has_image = true;
-}
-
-void body_add_image_list(body_t *body, list_t *image_list){
-    body->image_list = image_list;
-    if(list_size(image_list) > 1){
+void body_add_image_list(body_t *body, list_t *image_list) {
+    if (list_size(image_list) > 0) {
+        body->image_list = image_list;
         body->has_image_list = true;
     }
 }
 
-image_t *body_get_image(body_t *body) {
-    return body->image;
+bool body_has_image_list(body_t *body) {
+    return body->has_image_list;
 }
 
-bool body_has_image(body_t *body) {
-    return body->has_image;
+image_t *body_get_current_image(body_t *body) {
+    return list_get(body->image_list, body->image_list_index);
 }
 
 vector_t *give_vec(void) {
@@ -214,12 +206,13 @@ void body_tick(body_t *body, double dt) {
     body->velocity = new_vel;
     body->force = VEC_ZERO;
     body->impulse = VEC_ZERO;
-    body->image_change++;
-    if(body->has_image_list){
-        if (body->image_change % IMG_CHANGE == 0) {
-            // move to the next index image and wrap around if necessary
-            body_add_image(body, list_get(body->image_list, (list_index_of(body->image_list, body_get_image(body)) + 1) % list_size(body->image_list)));
-            body->image_change = 0;
+    
+    if (body->has_image_list) {
+        body->image_change_count += dt;
+
+        if (body->image_change_count > IMG_CHANGE_TIME) {
+            body->image_list_index = (body->image_list_index + 1) % list_size(body->image_list);
+            body->image_change_count = 0;
         }
     }
 }

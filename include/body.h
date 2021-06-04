@@ -102,29 +102,19 @@ rgb_color_t body_get_color(body_t *body);
 void *body_get_info(body_t *body);
 
 /**
-* Adds image to body
-*/
-void body_add_image(body_t *body, image_t *image);
-
-/**
  * Adds an image_list to body to rotate through every body tick
  */ 
 void body_add_image_list(body_t *body, list_t *image_list);
 
 /**
- * Returns truer if a body has an image_list, false otherwise
+ * Returns true if a body has an image list, false otherwise
  */ 
-void body_has_image_list(body_t *body);
+bool body_has_image_list(body_t *body);
 
 /**
-* Returns a pointer to the image_t of body
-*/
-image_t *body_get_image(body_t *body);
-
-/**
-* Returns true if body has an image, false otherwise
-*/
-bool body_has_image(body_t *body);
+ * Returns the current image to be displayed for a body
+ */ 
+image_t *body_get_current_image(body_t *body);
 
 /**
  * Translates a body to a new position.
