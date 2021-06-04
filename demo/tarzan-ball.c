@@ -40,9 +40,9 @@ const double CURSOR_DOT_RADIUS = 1;
 const size_t CURSOR_DOT_NPOINTS = 10;
 
 // Friction, Gravity, and Tongue Force
-const double FRICTION_COEFFICIENT = 30;
-const double GRAVITY = 3000;
-const double TONGUE_FORCE = 3000;
+const double FRICTION_COEFFICIENT = 10;
+const double GRAVITY = 1000;
+const double TONGUE_FORCE = 1300;
 
 // Loading Screen
 size_t LOADING_SCREEN_NUM_RECTANGLES = 80;
@@ -67,7 +67,7 @@ const double MAX_Y = 500.0;
 
 // Level Progression
 const size_t STARTING_LEVEL = 1;
-const size_t NUM_LEVELS = 4;
+const size_t NUM_LEVELS = 5;
 
 // Globals
 list_t *INTERACTABLES;
@@ -76,12 +76,16 @@ bool clicked = false;
 
 /**
  * TODO:
- * - Tongue getting stuck sometimes (Julian knows a lot abt this)
- * - Assertion failed: (index < list->size) when we try to get to the next level
+ * DANIEL:
+ * - Change win screen pictƒure and text
+ * KYLE:
+ * - Add 'P' pause un-pause functionality
+ * - Don't need body image, just need image_list and move the incrementing to sdl_wrapper
+ * - Make new level
+ * - Optimize on_key
+ * JULIAN:
  * - Global Variables
- * - First Click after transition not registered
- * - Sprite animation
- * - Change win screen picture and text
+ * - Level Generator bugs
  */ 
 
 /**
@@ -168,9 +172,9 @@ body_t *rect_gen(scene_t *scene, double width, double height, double mass, vecto
     return bod;
 }
 
-double find_body_in_scene(scene_t *scene, char type, int start){
+double find_body_in_scene(scene_t *scene, char type, int start) {
     double index = start - 1;
-    while(((char *) body_get_info(scene_get_body(scene, index)))[0] != type){
+    while(((char *) body_get_info(scene_get_body(scene, index)))[0] != type) {
         index--;
         if(index <= -1){
             return -1;
@@ -223,7 +227,7 @@ void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     vector_t center = vec_multiply(.5, vec_add(body1_cen, body2_cen));
     
     double distance = sqrt(difference.x * difference.x + difference.y * difference.y);
-    if(distance > TONGUE_CUTOFF_LENGTH || cursor_is_outside(body2)){
+    if (distance > TONGUE_CUTOFF_LENGTH || cursor_is_outside(body2)) {
         double index = find_body_in_scene(scene, 'T', scene_bodies(scene));
         if(index != -1){ 
             scene_remove_body(scene, index);
@@ -247,7 +251,7 @@ void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     rect_gen(scene, TONGUE_WIDTH, distance, INFINITY, center, PURPLE_COLOR, c, angle, NULL);    
 }
 
-body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, bool add, char *image_name, vector_t image_dimensions){
+body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius, double mass, rgb_color_t color, char *c, bool add, list_t *image_names, vector_t image_dimensions){
     list_t *ball_points = list_init(points, (free_func_t) vec_free);
     for (size_t i = 0; i < points; i++) {
         double angle = 2 * M_PI * i / points; 
@@ -258,8 +262,13 @@ body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius,
     }
     polygon_rotate(ball_points, M_PI / points, start);
     body_t *ball_bod = body_init_with_info(ball_points, mass, color, c, (free_func_t) free);
-    if (image_name != NULL) {
-        body_add_image(ball_bod, image_init(image_name, image_dimensions, 0.0));
+    if (image_names != NULL) {
+        body_add_image(ball_bod, image_init(list_get(image_names, 0), image_dimensions, 0.0));
+        list_t *images = list_init(list_size(image_names), (free_func_t) image_free);
+        for(int i = 0; i < list_size(image_names); i++){
+            list_add(images, image_init(list_get(image_names, i), image_dimensions, 0.0));
+        }
+        body_add_image_list(ball_bod, images);
     }
     if (add){
         scene_add_body(scene, ball_bod);
@@ -352,33 +361,40 @@ void tongue_removal(scene_t *scene){
 void circ_draw(scene_t *scene, char *line){
     list_t *list = list_init(10, free);
     char *ptr = malloc(200);
-	const char delim[2] = " ";
+    const char delim[2] = " ";
     char *holder = malloc(100);
-	ptr = strtok(line, delim);
+    ptr = strtok(line, delim);
 
-	while(ptr != NULL){
-		list_add(list, ptr);
-		ptr = strtok(NULL, delim);
-	}
+    while(ptr != NULL){
+        list_add(list, ptr);
+        ptr = strtok(NULL, delim);
+    }
 
     char *c = malloc(1);
-    char *image_name = malloc(20);
+    list_t *image_name_list = list_init(2, free);
     vector_t dimensions;
     if (strtod(list_get(list, 8), &holder) == 0) {
         *c = 'P';
-        image_name = "images/tarzan-ball.png";
+        char *image_name1 = malloc(20);
+        image_name1 = "images/tarzan-ball.png";
+        char *image_name2 = malloc(20);
+        image_name2 = "images/tarzan-eyes.png";
+        list_add(image_name_list, image_name1);
+        list_add(image_name_list, image_name2);
         dimensions = (vector_t) {60, 60};
     }
     else {
         *c = 'E';
+        char *image_name = malloc(20);
         image_name = "images/target-image.png";
+        list_add(image_name_list, image_name);
         dimensions = (vector_t) {40, 40};
     }
 
     body_t *body = circle_gen(scene, strtod(list_get(list, 0), &holder), (vector_t) {strtod(list_get(list, 1),
             &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
-            strtod(list_get(list, 7), &holder)}, c, true, image_name, dimensions);
+            strtod(list_get(list, 7), &holder)}, c, true, image_name_list, dimensions);
     if (player_added) {
         list_add(INTERACTABLES, body);
     }
@@ -569,14 +585,14 @@ list_t *make_tutorial(){
 
 list_t *make_menu_text() {
     list_t *ret = list_init(2, (free_func_t) textbox_free);
-    textbox_t *one = textbox_init(300, 150, 400, 80, "Menu", 
-                TTF_OpenFont("fonts/Skranji-Regular.ttf", 160), (SDL_Color) {0, 200, 0});
+    textbox_t *one = textbox_init(300, 150, 400, 100, "Menu", 
+                TTF_OpenFont("fonts/karvwood.otf", 160), (SDL_Color) {0, 200, 0});
     list_add(ret, one);
     list_add(ret, make_menu_button());
-    textbox_t *three = textbox_init(310, 240, 380, 25, "Press \'r\' to go to replay level", 
+    textbox_t *three = textbox_init(310, 250, 380, 25, "Press \'r\' to go to restart level", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
     list_add(ret, three);
-    textbox_t *four = textbox_init(400, 300, 200, 25, "Press \'q\' to quit", 
+    textbox_t *four = textbox_init(400, 295, 200, 25, "Press \'q\' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
     list_add(ret, four);
     return ret;
@@ -584,18 +600,18 @@ list_t *make_menu_text() {
 
 list_t *make_win_text() {
     list_t *ret = list_init(2, (free_func_t) textbox_free);
-    textbox_t *one = textbox_init(100, 100, 800, 50, "LEVEL COMPLETED!", 
-                TTF_OpenFont("fonts/karvwood.otf", 36), (SDL_Color) {128, 0, 128});
+    textbox_t *one = textbox_init(100, 50, 800, 60, "CONGRATULATIONS.", 
+                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {0, 200, 0});
     list_add(ret, one);
-    textbox_t *two = textbox_init(300, 175, 400, 30, "Press \'n\' to go to the next level", 
-                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 128, 255});
-    list_add(ret, two);
-    textbox_t *three = textbox_init(310, 225, 380, 30, "Press \'r\' to go to replay level", 
-                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 128, 255});
-    list_add(ret, three);
-    textbox_t *four = textbox_init(400, 275, 200, 30, "Press \'q\' to quit", 
-                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 128, 255});
+    textbox_t *four = textbox_init(375, 110, 250, 60, "YOU WIN!", 
+                TTF_OpenFont("fonts/karvwood.otf", 100), (SDL_Color) {0, 200, 0});
     list_add(ret, four);
+    textbox_t *two = textbox_init(300, 350, 400, 30, "Press \'r\' to go again", 
+                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 200, 0});
+    list_add(ret, two);
+    textbox_t *three = textbox_init(400, 400, 200, 30, "Press \'q\' to quit", 
+                TTF_OpenFont("fonts/karvwood.otf", 120), (SDL_Color) {0, 200, 0});
+    list_add(ret, three);
     return ret;
 }
 
@@ -604,9 +620,9 @@ list_t *make_loss_text() {
     textbox_t *one = textbox_init(300, 150, 400, 40, "YOU DIED.", 
                 TTF_OpenFont("fonts/karvwood.otf", 160), (SDL_Color) {0, 200, 0});
     list_add(ret, one);
+    list_add(ret, make_menu_button());
     textbox_t *three = textbox_init(310, 240, 380, 25, "Press \'r\' to go to replay level", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
-    list_add(ret, make_menu_button());
     list_add(ret, three);
     textbox_t *four = textbox_init(400, 300, 200, 25, "Press \'q\' to quit", 
                 TTF_OpenFont("fonts/karvwood.otf", 150), (SDL_Color) {0, 200, 0});
@@ -615,6 +631,11 @@ list_t *make_loss_text() {
 }
 
 void on_key(char key, key_event_type_t type, double held_time, void *scene, vector_t loc) {
+    if (find_body_in_scene(scene, 'C', scene_bodies(scene)) == -1 || find_body_in_scene(scene, 'I', scene_bodies(scene)) == -1
+                || find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1 || find_body_in_scene(scene, 'R', scene_bodies(scene)) == -1
+                || find_body_in_scene(scene, 'E', scene_bodies(scene)) == -1) {    
+        return;
+    }
     loc = (vector_t) {loc.x, MAX_Y - loc.y};
     body_t *cursor_out = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'C', scene_bodies(scene)));
     body_t *cursor_dot = scene_get_body((scene_t *) scene, find_body_in_scene(scene, 'I', scene_bodies(scene)));
@@ -624,10 +645,8 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     
     
     if (type == KEY_PRESSED) {
-        printf("\nin the big if");
         switch (key) {
             case MOUSE_CLICK: {
-                printf("\nin the small if");
                 if (! scene_show_text_image(scene, 0)) {
                     // If the user clicks on the menu button, display the menu image
                     if (find_collision(body_get_shape(cursor_dot), body_get_shape(menu_button)).collided) {
@@ -762,9 +781,9 @@ int main(int argc, char *argv[]) {
     bool died = false;
     list_t *textboxes;
     scene_t *scene = set_up_level(current_level);
+    sdl_on_key((key_handler_t) on_key);
 
     while (!sdl_is_done(scene)) {
-        sdl_on_key((key_handler_t) on_key);
         textboxes = assign_textboxes(scene, current_level);
 
         // Level Restart Condition: 'r' is clicked while the menu is pulled up
@@ -789,7 +808,6 @@ int main(int argc, char *argv[]) {
                 scene_set_show_text_image(scene, WIN_IMAGE_INDEX, true);
             }
             else {
-                printf("\n\n\nSTARTING NEXT LEVEL\n\n\n");
                 scene = set_up_level(current_level);
             }
         }

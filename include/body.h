@@ -107,6 +107,16 @@ void *body_get_info(body_t *body);
 void body_add_image(body_t *body, image_t *image);
 
 /**
+ * Adds an image_list to body to rotate through every body tick
+ */ 
+void body_add_image_list(body_t *body, list_t *image_list);
+
+/**
+ * Returns truer if a body has an image_list, false otherwise
+ */ 
+void body_has_image_list(body_t *body);
+
+/**
 * Returns a pointer to the image_t of body
 */
 image_t *body_get_image(body_t *body);
@@ -232,7 +242,5 @@ double body_get_elasticity(body_t *body);
  * @param x the centroid we want to use for body going forward
  */
 void body_redefine_centroid(body_t *body, vector_t new_centroid);
-
-
 
 #endif // #ifndef __BODY_H__
