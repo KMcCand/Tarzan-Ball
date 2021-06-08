@@ -3,6 +3,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <assert.h>
 #include "forces.h"
 #include "polygon.h"
 #include "scene.h"
@@ -17,8 +18,6 @@ const double MAX_Y = 500.0;
 const rgb_color_t CURSOR_COLOR = {0.388, 0.09, 0.663};
 
 rgb_color_t WALL_COLOR = {.5, .5, .5};
-
-double RECTANGLE_NUM = 0;
 
 list_t *RECTANGLES;
 
@@ -107,7 +106,6 @@ typedef struct rect{
 rect_t *rect_init(scene_t *scene, double width, double height, double mass, vector_t center, rgb_color_t color, char c, double rotate){
     rect_t *rect = malloc(sizeof(rect_t));
     rect->scene = malloc(sizeof(scene_t *));
-    //rect->c = malloc(sizeof(char *));
     rect->c = c;
     rect->scene = scene;
     rect->width = width;
@@ -151,6 +149,10 @@ void rect_center(rect_t *rect, vector_t center){
     rect->center = center;
 }
 
+vector_t rect_get_center(rect_t *rect){
+    return rect->center;
+}
+
 void rect_rotate(rect_t *rect){
     rect->rotate += M_PI / 8;
 }
@@ -189,20 +191,12 @@ body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius,
     return ball_bod;
 }
 
-vector_t tongue_direction(body_t *body1, body_t *body2){
-    vector_t body1_center = body_get_centroid(body1);
-    vector_t body2_center = body_get_centroid(body2);
-
-    vector_t difference = vec_subtract(body2_center, body1_center);
-    double distance = sqrt(difference.x * difference.x + difference.y * difference.y);
-
-    return vec_multiply(1 / distance, difference);
-}
-
-void starting_rect_gen(scene_t *scene, vector_t start){
+void starting_rect_gen(scene_t *scene, vector_t start, bool add){
     rect_t *rect = rect_init(scene, 100, 50, INFINITY, start, WALL_COLOR, 'W', 0);
     rect_add(rect);
-    list_add(RECTANGLES, rect);
+    if(add){
+        list_add(RECTANGLES, rect);
+    }
 }
 
 double find_body_in_scene(scene_t *scene, char type, int start){
@@ -216,29 +210,39 @@ double find_body_in_scene(scene_t *scene, char type, int start){
     return index;
 }
 
+//NEXT THREE FUNCTIONS COME FROM TEST_UTIL.H
+bool within(double epsilon, double d1, double d2){
+    return fabs(d1 - d2) < epsilon;
+}
+
+bool isclose(double d1, double d2) {
+    return within(1e-7, d1, d2);
+}
+
+bool vec_isclose(vector_t v1, vector_t v2) {
+    return isclose(v1.x, v2.x) && isclose(v1.y, v2.y);
+}
+
+double find_rect_in_RECTS(vector_t center){
+    for(size_t i = 0; i < list_size(RECTANGLES); i++){
+        if(vec_isclose(center, rect_get_center(list_get(RECTANGLES, i)))){
+            return i;
+        }
+    }
+    return -1;
+}
+
 void on_key(char key, key_event_type_t type, double held_time, void *scene, vector_t loc) {
     loc = (vector_t) {loc.x, MAX_Y - loc.y};
-    body_t *cursor = scene_get_body((scene_t *) scene, RECTANGLE_NUM);
-    rect_t *current_rect = list_get(RECTANGLES, RECTANGLE_NUM);
+    body_t *cursor = scene_get_body((scene_t *) scene, scene_bodies(scene) - 1);
+    rect_t *current_rect = list_get(RECTANGLES, list_size(RECTANGLES) - 1);
     
     if (type == KEY_PRESSED) {
         switch (key) {
             case MOUSE_CLICK: {
-                printf("clicked mouse\n");
-                if(find_body_in_scene(scene, 'P', scene_bodies(scene)) == RECTANGLE_NUM){
-                    player = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {0.388, 0.09, 0.663}, 'P');
-                    player_in = true;
-                }
-                if(find_body_in_scene(scene, 'E', scene_bodies(scene)) == RECTANGLE_NUM){
-                    target = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {1, 0, 0}, 'E');
-                    target_in = true;
-                }
                 if(cursor_val){
-                    //double cursor_index = find_body_in_scene(scene, 'C', scene_bodies(scene));
-                    for(size_t i = 0; i < scene_bodies(scene); i++){
-                        if(i == RECTANGLE_NUM){
-                            continue;
-                        }
+                    double rect = 0;
+                    for(size_t i = 0; i < scene_bodies(scene) - 1; i++){
                         if(find_collision(body_get_shape(cursor), body_get_shape(scene_get_body(scene, i))).collided){
                             if(find_body_in_scene(scene, 'P', scene_bodies(scene)) == i){
                                 double ind = find_body_in_scene(scene, 'C', scene_bodies(scene));
@@ -248,7 +252,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                                 char *c = malloc(1);
                                 *c = 'P';
                                 circle_gen(scene, 16, loc, 20, 50.00, (rgb_color_t) {0.388, 0.09, 0.663}, c, true);
-                                RECTANGLE_NUM --;
+                                player = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {0.388, 0.09, 0.663}, 'P');
                                 player_in = false;
                                 break;
                             }
@@ -258,9 +262,9 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                                 scene_remove_body(scene, i);
                                 cursor_val = false;
                                 char *c = malloc(1);
-                                *c = 'P';
+                                *c = 'E';
                                 circle_gen(scene, 16, loc, 20, 50.00, (rgb_color_t) {1, 0, 0}, c, true);
-                                RECTANGLE_NUM --;
+                                target = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {1, 0, 0}, 'E');
                                 target_in = false;
                                 break;
                             }
@@ -269,74 +273,82 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                                 scene_remove_body(scene, ind);
                                 scene_remove_body(scene, i);
                                 cursor_val = false;
-                                rect_add(list_get(RECTANGLES, i));
-                                RECTANGLE_NUM --;
+                                double index = find_rect_in_RECTS(body_get_centroid(scene_get_body(scene, i)));
+                                rect_add(list_get(RECTANGLES, index));
+                                list_add(RECTANGLES, list_get(RECTANGLES, index));
                             }
+                            cursor_val=false;
                             break;
                         }
+                        if(!(find_body_in_scene(scene, 'P', scene_bodies(scene)) == i || find_body_in_scene(scene, 'E', scene_bodies(scene)) == i)){
+                            rect++;
+                        }
                     }
+                    cursor_val = false;
                     break;
                 }
-                RECTANGLE_NUM += 1;
-                starting_rect_gen(scene, loc);
+                
+                if(((char *) body_get_info(cursor))[0] == 'P'){
+                    player = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {0.388, 0.09, 0.663}, 'P');
+                    player_in = true;
+                    starting_rect_gen(scene, loc, false);
+                    break;
+                }
+                if(((char *) body_get_info(cursor))[0] == 'E'){
+                    target = circle_init(scene, 16, loc, 20, 50.00, (rgb_color_t) {1, 0, 0}, 'E');
+                    target_in = true;
+                    starting_rect_gen(scene, loc, false);
+                    break;
+                }
+                starting_rect_gen(scene, loc, true);
                 break;
             }
             case RIGHT_ARROW:{
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_width_increase(current_rect);
                 rect_add(current_rect);
-                scene_remove_body(scene, RECTANGLE_NUM);
                 break;
             }
             case LEFT_ARROW:{
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_width_decrease(current_rect);
                 rect_add(current_rect);
-                scene_remove_body(scene, RECTANGLE_NUM);
                 break;
             }
             case UP_ARROW:{
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_height_increase(current_rect);
                 rect_add(current_rect);
-                scene_remove_body(scene, RECTANGLE_NUM);
                 break;
             }
             case DOWN_ARROW:{
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_height_decrease(current_rect);
                 rect_add(current_rect);
-                scene_remove_body(scene, RECTANGLE_NUM);
                 break;
             }
             case R_KEY:{
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_rotate(current_rect);
                 rect_add(current_rect);
-                scene_remove_body(scene, RECTANGLE_NUM);
                 break;
             }
             case S_KEY: {
                 if(cursor_val){
                     break;
                 }
-                scene_remove_body(scene, RECTANGLE_NUM);
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 char *c = malloc(1);
                 *c = 'C';
-                circle_gen(scene, 10, loc, 10, INFINITY, (rgb_color_t) {1, 0, 0}, c, true);
+                circle_gen(scene, 10, loc, 10, INFINITY, (rgb_color_t) {0, 1, 0}, c, true);
                 cursor_val = true;
-                break;
-            }
-            case W_KEY: {
-                if(!cursor_val){
-                    break;
-                }
-                double ind = find_body_in_scene(scene, 'C', scene_bodies(scene));
-                starting_rect_gen(scene, loc);
-                scene_remove_body(scene, ind);
-                cursor_val = false;
                 break;
             }
             case P_KEY: {
                 if(player_in){
                     break;
                 }
-                scene_remove_body(scene, RECTANGLE_NUM);
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 char *c = malloc(1);
                 *c = 'P';
                 circle_gen(scene, 16, loc, 20, 50.00, (rgb_color_t) {0.388, 0.09, 0.663}, c, true);
@@ -347,15 +359,15 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 if(scene_bodies(scene) <= 1){
                     break;
                 }
-                scene_remove_body(scene, RECTANGLE_NUM);
-                RECTANGLE_NUM --;
+                scene_remove_body(scene, scene_bodies(scene) - 1);
+                list_remove_back(RECTANGLES);
                 break;
             }
             case T_KEY: {
                 if(target_in){
                     break;
                 }
-                scene_remove_body(scene, RECTANGLE_NUM);
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 char *c = malloc(1);
                 *c = 'E';
                 circle_gen(scene, 16, loc, 20, 50.00, (rgb_color_t) {1, 0, 0}, c, true);
@@ -363,9 +375,9 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                 break;
             }
             case K_KEY: {
-                scene_remove_body(scene, RECTANGLE_NUM);
+                list_remove_back(RECTANGLES);
+                scene_remove_body(scene, scene_bodies(scene) - 1);
                 rect_t *rect = rect_init(scene, 100, 50, INFINITY, loc, (rgb_color_t) {1, 0, 0}, 'K', 0);
-                list_remove(RECTANGLES, RECTANGLE_NUM);
                 rect_add(rect);
                 list_add(RECTANGLES, rect);
                 break;
@@ -376,7 +388,6 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     if (type == MOUSE_ENGAGED) {
         switch (key) {
             case MOUSE_MOVED: {
-                //body_redefine_centroid(cursor, loc);
                 rect_center(current_rect, loc);
                 body_set_centroid(cursor, loc);
                 break;
@@ -385,12 +396,21 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     }
 }
 
+bool rect_in_scene(scene_t *scene, vector_t vec){
+    for(size_t i = 0; i < scene_bodies(scene); i++){
+        if(vec_isclose(body_get_centroid(scene_get_body(scene, i)), vec)){
+            return true;
+        }
+    }
+    return false;
+}
+
 int main(int argc, char *argv[]) {
     RECTANGLES = list_init(3, free);
     sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y});
     scene_t *scene = scene_init();
 
-    starting_rect_gen(scene, (vector_t) {500, 250});
+    starting_rect_gen(scene, (vector_t) {500, 250}, true);
     double dt = 0;
 
     while (!sdl_is_done(scene)) {
@@ -411,6 +431,8 @@ int main(int argc, char *argv[]) {
         target_int = 1;
     }
 
+    //creates the file to be used for the creation of levels in the game
+
     FILE *f = fopen("levels/level_TESTING.txt", "w");
     fprintf(f, "PLAYER\n");
     if(player != NULL){
@@ -421,8 +443,11 @@ int main(int argc, char *argv[]) {
         fprintf(f, "%s\n", circle_string_info(target));
     }
     fprintf(f, "WALLS\n");
-    for(size_t i = 0; i < list_size(RECTANGLES) - 1 - target_int - player_int; i++){
-        fprintf(f, "%s\n", rect_string_info(list_get(RECTANGLES, i)));
+    for(size_t i = 0; i < list_size(RECTANGLES) - 1; i++){
+        //backup checker to make sure the rectangle in the list is actually in the scene
+        if(rect_in_scene(scene, rect_get_center(list_get(RECTANGLES, i)))){
+            fprintf(f, "%s\n", rect_string_info(list_get(RECTANGLES, i)));
+        }
     }
 
     fclose(f);

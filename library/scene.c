@@ -23,6 +23,9 @@ typedef struct scene {
     image_t *background;
     list_t *text_images;
     bool pause;
+    bool clicked;
+    void *extra_info;
+    free_func_t extra_info_freer;
 } scene_t;
 
 force_t *force_init(force_creator_t forcer, list_t *bodies, aux_t *aux, free_func_t freer) {
@@ -57,12 +60,15 @@ scene_t *scene_init(void) {
     scene_t *scene = malloc(sizeof(scene_t));
     scene->bodies = list_init(10, (free_func_t) body_free);
     scene->forces = list_init(10, (free_func_t) force_free);
+    scene->extra_info = malloc(sizeof(void *));
     scene->size = 0;
     assert(scene != NULL);
     scene->background = NULL;
     scene->has_background = false;
     scene->text_images = list_init(3, (free_func_t) image_free);
     scene->pause = false;
+    scene->clicked = false;
+    scene->extra_info_freer = NULL;
     return scene;
 }
 
@@ -73,6 +79,9 @@ void scene_free(scene_t *scene) {
         image_free(scene->background);
     }
     list_free(scene->text_images);
+    if(scene->extra_info_freer != NULL){
+        scene->extra_info_freer(scene->extra_info);
+    }
     free(scene);
 }
 
@@ -82,6 +91,15 @@ size_t scene_bodies(scene_t *scene) {
 
 body_t *scene_get_body(scene_t *scene, size_t index) {
     return list_get(scene->bodies, index);
+}
+
+void *scene_get_extra_info(scene_t *scene){
+    return scene->extra_info;
+}
+
+void scene_set_extra_info(scene_t *scene, void *info, free_func_t freer){
+    scene->extra_info = info;
+    scene->extra_info_freer = freer;
 }
 
 void scene_add_body(scene_t *scene, body_t *body) {
@@ -111,6 +129,14 @@ void scene_add_text_image(scene_t *scene, char *name, vector_t dimensions) {
 
 list_t *scene_get_text_images(scene_t *scene) {
     return scene->text_images;
+}
+
+bool scene_get_clicked(scene_t *scene){
+    return scene->clicked;
+}
+
+void scene_set_clicked(scene_t *scene, bool clicked){
+    scene->clicked = clicked;
 }
 
 void scene_set_show_text_image(scene_t *scene, size_t index, bool new_value) {

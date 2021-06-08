@@ -105,9 +105,9 @@ void rect_draw(scene_t *scene, char *line){
 }
 
 int main(int argc, char *argv[]) {
-    FILE *f = fopen("levels/level_3.txt", "r");
+    FILE *f = fopen("levels/level_TESTING.txt", "r");
 
-    sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y}, list_init(2, free), list_init(2, free), list_init(2, free));
+    sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y});
     scene_t *scene = scene_init();
 
     char *line = malloc(200);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
     }
 
     while(!sdl_is_done(scene)){
-        sdl_render_scene(scene);
+        sdl_render_scene(scene, list_init(1, free));
     }
 
     fclose(f);

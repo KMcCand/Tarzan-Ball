@@ -69,20 +69,14 @@ const double MAX_X = 1000.0;
 const double MAX_Y = 500.0;
 
 // Level Progression
-const size_t STARTING_LEVEL = 1;
+const size_t STARTING_LEVEL = 5;
 const size_t NUM_LEVELS = 1;
 
-// Globals
-list_t *INTERACTABLES;
-bool player_added = false;
-bool clicked = false;
 
 /**
  * TODO:
  * JULIAN:
- * - Global Variables
  * - Level Generator bugs
- * - Is there a way to make the tongue not stick to lava?
  */ 
 
 /**
@@ -209,7 +203,7 @@ void surface_friction(body_t *body1, body_t *body2, vector_t axis, void *aux) {
 void tongue_interaction(body_t *body1, body_t *body2, vector_t axis, void *aux){
     scene_t *scene = (scene_t *) aux;
 
-    if (body_is_removed(body2) || (scene_get_body(scene, find_body_in_scene(scene, 'E', scene_bodies(scene))) == body2 && clicked)) {
+    if (body_is_removed(body2) || (scene_get_body(scene, find_body_in_scene(scene, 'E', scene_bodies(scene))) == body2 && scene_get_clicked(scene))) {
         return;
     }
     
@@ -274,6 +268,7 @@ body_t *circle_gen(scene_t *scene, size_t points, vector_t start, double radius,
 
 void freeze_tongue_end(body_t *tongue, body_t *wall, vector_t axis, void *aux) {
     scene_t *scene = (scene_t *) aux;
+    list_t *interactables = (list_t *) scene_get_extra_info(scene);
     double index_body = find_body_in_scene(scene, 'T', scene_bodies(scene));
     double index_player = find_body_in_scene(scene, 'P', scene_bodies(scene));
     double index_goal = find_body_in_scene(scene, 'E', scene_bodies(scene));
@@ -286,12 +281,12 @@ void freeze_tongue_end(body_t *tongue, body_t *wall, vector_t axis, void *aux) {
 
     body_t *goal = scene_get_body(scene, index_goal);
     if(find_collision(body_get_shape(new_tongue), body_get_shape(goal)).collided){
-        create_tongue_force(scene, TONGUE_FORCE, player, goal, INTERACTABLES);
+        create_tongue_force(scene, TONGUE_FORCE, player, goal, interactables);
         create_interaction(scene, player, goal, (collision_handler_t) tongue_interaction, scene, NULL);
     }
     else{
         create_interaction(scene, player, new_tongue, (collision_handler_t) tongue_interaction, scene, NULL);
-        create_tongue_force(scene, TONGUE_FORCE, player, new_tongue, INTERACTABLES);
+        create_tongue_force(scene, TONGUE_FORCE, player, new_tongue, interactables);
         scene_add_body(scene, new_tongue);
     }
 
@@ -310,38 +305,41 @@ vector_t tongue_direction(body_t *body1, body_t *body2){
     return vec_multiply(1 / distance, difference);
 }
 
-void create_viable_player_collisions(scene_t *scene, body_t *player){
-    for(size_t i = 0; i < list_size(INTERACTABLES); i++){
-        create_physics_collision(scene, BALL_ELASTICITY, player, list_get(INTERACTABLES, i));
-        create_collision(scene, player, (body_t *) list_get(INTERACTABLES, i), (collision_handler_t) surface_friction, scene, NULL);
+void create_viable_player_collisions(scene_t *scene, body_t *player, list_t *player_interactables){
+    for(size_t i = 0; i < list_size(player_interactables); i++){
+        create_physics_collision(scene, BALL_ELASTICITY, player, list_get(player_interactables, i));
+        create_collision(scene, player, (body_t *) list_get(player_interactables, i), (collision_handler_t) surface_friction, scene, NULL);
     }
 }
 
-void create_viable_tongue_collisions(scene_t *scene, body_t *tongue){
-    for(size_t i = 0; i < list_size(INTERACTABLES); i++){
-        body_t *body = list_get(INTERACTABLES, i);
+void create_viable_tongue_collisions(scene_t *scene, body_t *tongue, list_t *tongue_interactables){
+    for(size_t i = 0; i < list_size(tongue_interactables); i++){
+        body_t *body = list_get(tongue_interactables, i);
         create_collision(scene, tongue, body, (collision_handler_t) freeze_tongue_end, scene, NULL);
     }
 }
 
-void bouncy_wall_gen(scene_t *scene){
+void bouncy_wall_gen(scene_t *scene, list_t* player_interactables){
     char *c = malloc(1);
     *c = 'W';
     body_t *left_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
                 (vector_t) {-MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
-    list_add(INTERACTABLES, left_wall);
+    list_add(player_interactables, left_wall);
+    //list_add(tongue_interactables, left_wall);
 
     c = malloc(1);
     *c = 'W';
     body_t *right_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
                 (vector_t) {2 * MAX_X, MAX_Y / 2}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
-    list_add(INTERACTABLES, right_wall);
+    list_add(player_interactables, right_wall);
+    //list_add(tongue_interactables, right_wall);
     
     c = malloc(1);
     *c = 'W';
     body_t *top_wall = rect_gen(scene, 2 * MAX_X, 2 * MAX_Y, INFINITY, 
                 (vector_t) {MAX_X / 2, 2 * MAX_Y}, (rgb_color_t) {1, 1, 1}, c, 0, NULL);
-    list_add(INTERACTABLES, top_wall);
+    list_add(player_interactables, top_wall);
+    //list_add(tongue_interactables, top_wall);
 }
 
 void tongue_removal(scene_t *scene){
@@ -374,7 +372,7 @@ void add_tarzan_frames(list_t *image_list) {
     list_add(image_list, image_init(image_name, TARZAN_BODY_IMAGE_DIM, 0));
 }
 
-void circ_draw(scene_t *scene, char *line){
+void circ_draw(scene_t *scene, char *line, bool player_added, list_t *player_interactables, list_t *tongue_interactables){
     list_t *list = list_init(10, free);
     char *ptr = malloc(200);
     const char delim[2] = " ";
@@ -405,13 +403,13 @@ void circ_draw(scene_t *scene, char *line){
             &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, true, image_list);
     if (player_added) {
-        list_add(INTERACTABLES, body);
+        list_add(player_interactables, body);
+        list_add(tongue_interactables, body);
     }
-    player_added = true;
     free(ptr);
 }
 
-void rect_draw(scene_t *scene, char *line){
+void rect_draw(scene_t *scene, char *line, list_t *player_interactables, list_t *tongue_interactables){
     //pulled from: https://www.codingame.com/playgrounds/14213/how-to-play-with-strings-in-c/string-split
     list_t *list = list_init(10, free);
     char *ptr = malloc(200);
@@ -444,31 +442,41 @@ void rect_draw(scene_t *scene, char *line){
             strtod(list_get(list, 2), &holder), (vector_t) {strtod(list_get(list, 3), &holder), strtod(list_get(list, 4),
             &holder)}, (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder),
             strtod(list_get(list, 7), &holder)}, c, strtod(list_get(list, 9), &holder), image_list);
-    list_add(INTERACTABLES, body);
+    
+    
+    //list_add(INTERACTABLES, body);
 
     if(*c == 'K'){
         create_half_destruction(scene, body, scene_get_body(scene, find_body_in_scene(scene, 'P', scene_bodies(scene))));
+        list_add(player_interactables, body);
+    }
+    else{
+        list_add(player_interactables, body);
+        list_add(tongue_interactables, body);
     }
     free(ptr);
 }
 
-int level_init(scene_t *scene, char *file_name) {
+int level_init(scene_t *scene, char *file_name, list_t *player_interactables, list_t *tongue_interactables) {
     FILE *f = fopen(file_name, "r");
 
     int bodies = -3;
     char *line = malloc(200);
     int part = 0;
 
+    bool player_added = false;
+
     while (fgets(line, 200, f)) {
         if (strcmp(line, "WALLS\n") == 0){
             part = 1;
         }
         if (part == 0 && strcmp(line, "PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0) {
-            circ_draw(scene, line);
+            circ_draw(scene, line, player_added, player_interactables, tongue_interactables);
+            player_added = true;
             continue;
         }
         if (strcmp(line,"PLAYER\n") != 0 && strcmp(line, "TARGET\n") != 0 && strcmp(line, "WALLS\n") != 0) {
-            rect_draw(scene, line);
+            rect_draw(scene, line, player_interactables, tongue_interactables);
         }
         bodies++;
     }
@@ -557,25 +565,31 @@ scene_t *set_up_level(size_t level_num) {
     scene_t *scene = scene_init();
     set_background_and_text_images(scene);
 
-    INTERACTABLES = list_init(5, (free_func_t) body_free);
+    //INTERACTABLES = list_init(5, (free_func_t) body_free);
     
+    list_t *player_interactables = list_init(5, (free_func_t) body_free);
+    list_t *tongue_interactables = list_init(5, (free_func_t) free);
+
     char *level_name = get_level_name_from_num(level_num);
-    level_init(scene, level_name);
+    level_init(scene, level_name, player_interactables, tongue_interactables);
     free(level_name);
     sdl_init((vector_t) {MIN_X, MIN_Y}, (vector_t) {MAX_X, MAX_Y});
 
     draw_cursor_outside(scene, VEC_ZERO);
     draw_cursor_dot(scene, VEC_ZERO);
-    bouncy_wall_gen(scene);
+    bouncy_wall_gen(scene, player_interactables);
 
-    create_viable_player_collisions(scene, scene_get_body(scene, 0));
-    create_viable_player_collisions(scene, scene_get_body(scene, 1));
+    create_viable_player_collisions(scene, scene_get_body(scene, 0), player_interactables);
+    create_viable_player_collisions(scene, scene_get_body(scene, 1), player_interactables);
     create_half_destruction(scene, scene_get_body(scene, 0), scene_get_body(scene, 1));
 
-    create_universal_gravity(scene, GRAVITY, scene_get_body(scene, 0), INTERACTABLES);
-    create_universal_gravity(scene, GRAVITY, scene_get_body(scene, 1), INTERACTABLES);
+    create_universal_gravity(scene, GRAVITY, scene_get_body(scene, 0), player_interactables);
+    create_universal_gravity(scene, GRAVITY, scene_get_body(scene, 1), player_interactables);
 
     generate_menu_button_body(scene);
+
+    scene_set_extra_info(scene, tongue_interactables, (free_func_t) free);
+
     return scene;
 }
 
@@ -692,8 +706,8 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
                     vector_t direction = tongue_direction(player, cursor_dot);
                     body_set_velocity(tongue_end, vec_multiply(TONGUE_SPEED, direction));
                     create_interaction(scene, player, tongue_end, (collision_handler_t) tongue_interaction, scene, NULL);
-                    create_viable_tongue_collisions(scene, tongue_end);
-                    clicked = false;
+                    create_viable_tongue_collisions(scene, tongue_end, scene_get_extra_info(scene));
+                    scene_set_clicked(scene, false);
                     break;
                 }
                 break;   
@@ -735,7 +749,7 @@ void on_key(char key, key_event_type_t type, double held_time, void *scene, vect
     if (type == KEY_RELEASED) {
         switch(key) {
             case MOUSE_CLICK: {
-                clicked = true;
+                scene_set_clicked(scene, true);
                 double index = find_body_in_scene(scene, 'T', scene_bodies(scene));
                 if(index != -1){
                     scene_remove_body(scene, index);
@@ -794,7 +808,6 @@ void run_loading_screen() {
         sdl_render_scene(start_scene, textboxes);
         count++;
     }
-
     scene_free(start_scene);
     sdl_free();
     list_free(textboxes);
@@ -821,7 +834,6 @@ list_t *assign_textboxes(scene_t *scene, size_t current_level) {
 
 int main(int argc, char *argv[]) {
     run_loading_screen();
-
     size_t current_level = STARTING_LEVEL;
     bool died = false;
     list_t *textboxes;
@@ -835,7 +847,6 @@ int main(int argc, char *argv[]) {
         body_t *menu_button = scene_get_body(scene, find_body_in_scene(scene, 'R', scene_bodies(scene)));
         if (body_get_elasticity(menu_button) == 2) {
             body_set_elasticity(menu_button, 1);
-            player_added = false;
             scene_free(scene);
             sdl_free();
             scene = set_up_level(current_level);
@@ -844,7 +855,6 @@ int main(int argc, char *argv[]) {
         // Win Condition: target is no longer there
         else if (find_body_in_scene(scene, 'E', scene_bodies(scene)) == -1) {
             current_level++;
-            player_added = false;
             scene_free(scene);
             sdl_free();
             if (current_level > NUM_LEVELS) {
@@ -860,7 +870,6 @@ int main(int argc, char *argv[]) {
         // Loss Condition: player is no longer there
         else if (find_body_in_scene(scene, 'P', scene_bodies(scene)) == -1) {
             died = true;
-            player_added = false;
             scene_free(scene);
             sdl_free();
             scene = set_up_level(current_level);

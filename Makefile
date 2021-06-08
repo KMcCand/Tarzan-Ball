@@ -1,5 +1,5 @@
 # List of demo programs
-DEMOS = tarzan-ball level
+DEMOS = tarzan-ball level_maker level_viewer
 # List of C files in "libraries" that we provide
 STAFF_LIBS = test_util sdl_wrapper
 # List of C files in "libraries" that you will write.
@@ -90,7 +90,7 @@ bin/brickbreaker: out/brickbreaker.o out/sdl_wrapper.o $(STUDENT_OBJS)
 bin/tongue: out/tongue.o out/sdl_wrapper.o $(STUDENT_OBJS)
 		$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
-bin/level: out/level.o out/sdl_wrapper.o $(STUDENT_OBJS)
+bin/level_maker: out/level_maker.o out/sdl_wrapper.o $(STUDENT_OBJS)
 		$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 bin/level_viewer: out/level_viewer.o out/sdl_wrapper.o $(STUDENT_OBJS)

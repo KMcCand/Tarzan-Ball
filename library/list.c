@@ -92,7 +92,7 @@ void list_add_back(list_t *list, void *item) {
 }
 
 void *list_remove_back(list_t *list){
-    return list_remove(list, list->size);
+    return list_remove(list, list->size - 1);
 }
 
 void *list_remove(list_t *list, size_t index) {

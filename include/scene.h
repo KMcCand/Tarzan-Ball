@@ -15,6 +15,14 @@ typedef struct scene scene_t;
 
 typedef struct force force_t;
 
+bool scene_get_clicked(scene_t *scene);
+
+void scene_set_clicked(scene_t *scene, bool clicked);
+
+void *scene_get_extra_info(scene_t *scene);
+
+void scene_set_extra_info(scene_t *scene, void *info, free_func_t freer);
+
 list_t *force_get_bodies(force_t *force);
 
 void *force_get_forcer(force_t *force);
