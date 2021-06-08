@@ -69,15 +69,8 @@ const double MAX_X = 1000.0;
 const double MAX_Y = 500.0;
 
 // Level Progression
-const size_t STARTING_LEVEL = 5;
-const size_t NUM_LEVELS = 1;
-
-
-/**
- * TODO:
- * JULIAN:
- * - Level Generator bugs
- */ 
+const size_t STARTING_LEVEL = 1;
+const size_t NUM_LEVELS = 6;
 
 /**
  * Makes the body_t for the closed shape that is the outside of the cursor

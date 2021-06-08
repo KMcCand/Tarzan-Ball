@@ -73,7 +73,6 @@ void circ_draw(scene_t *scene, char *line){
 	}
 
     char *c = malloc(1);
-    //printf("%f", strtod(list_get(list, 8), &holder));
     if(strtod(list_get(list, 8), &holder) == 0){
         printf("palyer");
         *c = 'P';
@@ -83,7 +82,7 @@ void circ_draw(scene_t *scene, char *line){
         *c = 'E';
     }
 
-    circle_g(scene, strtod(list_get(list, 0), &holder), (vector_t) {strtod(list_get(list, 1), &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4), &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder), strtod(list_get(list, 7), &holder)}, c);
+    circle_g(scene, strtod(list_get(list, 0), &holder), (vector_t) {strtod(list_get(list, 1), &holder), strtod(list_get(list, 2), &holder)}, strtod(list_get(list, 3), &holder), strtod(list_get(list, 4), &holder), (rgb_color_t) {strtod(list_get(list, 5), &holder), strtod(list_get(list, 6), &holder), strtod(list_get(list, 7), &holder)}, *c);
 }
 
 void rect_draw(scene_t *scene, char *line){
