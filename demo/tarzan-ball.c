@@ -70,7 +70,7 @@ const double MAX_Y = 500.0;
 
 // Level Progression
 const size_t STARTING_LEVEL = 1;
-const size_t NUM_LEVELS = 6;
+const size_t NUM_LEVELS = 7;
 
 /**
  * Makes the body_t for the closed shape that is the outside of the cursor
